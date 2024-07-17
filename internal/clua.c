@@ -14,5 +14,5 @@ lua_State* clua_newstate(void* goallocf)
 
 l_noret cluaL_errorL(lua_State* L, char* msg)
 {
-	return luaL_error(L, msg);
+	luaL_errorL(L, msg);
 }

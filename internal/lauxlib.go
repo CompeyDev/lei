@@ -1,11 +1,12 @@
 package internal
 
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include -I${SRCDIR}
+#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
+#cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
-#include <clua.h>
+#include "clua.h"
 
 // From https://golang-nuts.narkive.com/UsNENgyt/cgo-how-to-pass-string-to-char-array
 static char** makeCharArray(int size) {
@@ -185,3 +186,52 @@ func LCheckOption(L *C.lua_State, narg int32, def string, lst []string) int32 {
 
 	return int32(C.luaL_checkoption(L, C.int(narg), cdef, clst))
 }
+
+func LToLString(L *C.lua_State, idx int32, len *uint64) string {
+	p := C.luaL_tolstring(L, C.int(idx), (*C.size_t)(len))
+	defer C.free(unsafe.Pointer(p))
+
+	return C.GoString(p)
+}
+
+func LNewState() *C.lua_State {
+	return C.luaL_newstate()
+}
+
+func LTypeName(L *C.lua_State, idx int32) string {
+	return C.GoString(C.luaL_typename(L, C.int(idx)))
+}
+
+func LSandbox(L *C.lua_State) {
+	C.luaL_sandbox(L)
+}
+
+func LSandboxThread(L *C.lua_State) {
+	C.luaL_sandboxthread(L)
+}
+
+//
+// Some useful macros
+//
+
+func LArgCheck(L *C.lua_State, cond bool, arg int32, extramsg string) {
+	if cond {
+		LArgError(L, arg, extramsg)
+	}
+}
+
+func LArgExpected(L *C.lua_State, cond bool, arg int32, tname string) {
+	if cond {
+		LTypeError(L, arg, tname)
+	}
+}
+
+func LCheckString(L *C.lua_State, n int32) string {
+	return LCheckLString(L, n, nil)
+}
+
+func LOptString(L *C.lua_State, n int32, d string) string {
+	return LOptLString(L, n, d, nil)
+}
+
+// TODO: More utility functions, buffer bindings
