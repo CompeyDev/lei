@@ -183,4 +183,94 @@ func ToUnsignedX(L *C.lua_State, idx int32, isnum bool) lua_Unsigned {
 	return lua_Unsigned(C.lua_tounsignedx(L, C.int(idx), &isnumInner))
 }
 
+func ToVector(L *C.lua_State, idx int32) {
+	C.lua_tovector(L, C.int(idx))
+}
+
+func ToBoolean(L *C.lua_State, idx int32) bool {
+	return C.lua_toboolean(L, C.int(idx)) != 0
+}
+
+func ToLString(L *C.lua_State, idx int32, len *uint64) string {
+	return C.GoString(C.lua_tolstring(L, C.int(idx), (*C.size_t)(len)))
+}
+
+func ToStringAtom(L *C.lua_State, idx int32, atom *int32) string {
+	return C.GoString(C.lua_tostringatom(L, C.int(idx), (*C.int)(atom)))
+}
+
+func NameCallAtom(L *C.lua_State, atom *int32) string {
+	return C.GoString(C.lua_namecallatom(L, (*C.int)(atom)))
+}
+
+func ObjLen(L *C.lua_State, idx int32) uint64 {
+	return uint64(C.lua_objlen(L, C.int(idx)))
+}
+
+func ToCFunction(L *C.lua_State, idx int32) lua_CFunction {
+	p := unsafe.Pointer(C.lua_tocfunction(L, C.int(idx)))
+	if p == C.NULL {
+		return nil
+	}
+
+	return *(*lua_CFunction)(p)
+}
+
+func ToLightUserdata(L *C.lua_State, idx int32) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_tolightuserdata(L, C.int(idx)))
+}
+
+func ToLightUserdataTagged(L *C.lua_State, idx int32, tag int32) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_tolightuserdatatagged(L, C.int(idx), C.int(tag)))
+}
+
+func ToUserdata(L *C.lua_State, idx int32) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_touserdata(L, C.int(idx)))
+}
+
+func ToUserdataTagged(L *C.lua_State, idx int32, tag int32) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_touserdatatagged(L, C.int(idx), C.int(tag)))
+}
+
+func UserdataTag(L *C.lua_State, idx int32) int32 {
+	return int32(C.lua_userdatatag(L, C.int(idx)))
+}
+
+func LightUserdataTag(L *C.lua_State, idx int32) int32 {
+	return int32(C.lua_lightuserdatatag(L, C.int(idx)))
+}
+
+func ToThread(L *C.lua_State, idx int32) *C.lua_State {
+	return C.lua_tothread(L, C.int(idx))
+}
+
+func ToBuffer(L *C.lua_State, idx int32, len *uint64) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_tobuffer(L, C.int(idx), (*C.size_t)(len)))
+}
+
+func ToPointer(L *C.lua_State, idx int32) unsafe.Pointer {
+	return unsafe.Pointer(C.lua_topointer(L, C.int(idx)))
+}
+
+// =======================
+// 	 Stack Manipulation
+// =======================
+
+func PushNil(L *C.lua_State) {
+	C.lua_pushnil(L)
+}
+
+func PushNumber(L *C.lua_State, n lua_Number) {
+	C.lua_pushnumber(L, C.lua_Number(n))
+}
+
+func PushInteger(L *C.lua_State, n lua_Integer) {
+	C.lua_pushinteger(L, C.lua_Integer(n))
+}
+
+// TODO: Vector 3 & 4
+func PushVector(L *C.lua_State, x float32, y float32, z float32) {
+	C.lua_pushvector(L, C.float(x), C.float(y), C.float(z))
+}
+
 // TODO: Rest of it
