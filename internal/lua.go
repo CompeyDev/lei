@@ -11,22 +11,22 @@ package internal
 import "C"
 import "unsafe"
 
-type lua_Number C.double
-type lua_Integer C.int
-type lua_Unsigned C.uint
+type lua_Number float64
+type lua_Integer int32
+type lua_Unsigned int32
 
-type lua_CFunction func(L *C.lua_State) C.int
-type lua_Continuation func(L *C.lua_State, status C.int) C.int
+type lua_CFunction func(L *C.lua_State) int32
+type lua_Continuation func(L *C.lua_State, status int32) int32
 
 type lua_Udestructor = func(*C.void)
-type lua_Destructor = func(L *C.lua_State, _ *C.void)
+type lua_Destructor = func(L *C.lua_State, _ unsafe.Pointer)
 
-type lua_Alloc = func(ud, ptr *C.void, osize, nsize C.size_t) *C.void
-type clua_Alloc = func(ptr unsafe.Pointer, osize, nsize uint) unsafe.Pointer
+// type lua_Alloc = func(ud, ptr *C.void, osize, nsize C.size_t) *C.void
+type lua_Alloc = func(ptr unsafe.Pointer, osize, nsize uint64) unsafe.Pointer
 
 //export go_allocf
-func go_allocf(fp uintptr, ptr uintptr, osize uint, nsize uint) uintptr {
-	p := ((*((*clua_Alloc)(unsafe.Pointer(fp))))(unsafe.Pointer(ptr), osize, nsize))
+func go_allocf(fp uintptr, ptr uintptr, osize uint64, nsize uint64) uintptr {
+	p := ((*((*lua_Alloc)(unsafe.Pointer(fp))))(unsafe.Pointer(ptr), osize, nsize))
 	return uintptr(p)
 }
 
@@ -66,48 +66,48 @@ func IsThreadReset(L *C.lua_State) bool {
 // ==================
 //
 
-func AbsIndex(L *C.lua_State, idx C.int) C.int {
-	return C.lua_absindex(L, idx)
+func AbsIndex(L *C.lua_State, idx int32) int32 {
+	return int32(C.lua_absindex(L, C.int(idx)))
 }
 
-func GetTop(L *C.lua_State) C.int {
-	return C.lua_gettop(L)
+func GetTop(L *C.lua_State) int32 {
+	return int32(C.lua_gettop(L))
 }
 
-func SetTop(L *C.lua_State, idx C.int) {
-	C.lua_settop(L, idx)
+func SetTop(L *C.lua_State, idx int32) {
+	C.lua_settop(L, C.int(idx))
 }
 
-func PushValue(L *C.lua_State, idx C.int) {
-	C.lua_pushvalue(L, idx)
+func PushValue(L *C.lua_State, idx int32) {
+	C.lua_pushvalue(L, C.int(idx))
 }
 
-func Remove(L *C.lua_State, idx C.int) {
-	C.lua_remove(L, idx)
+func Remove(L *C.lua_State, idx int32) {
+	C.lua_remove(L, C.int(idx))
 }
 
-func Insert(L *C.lua_State, idx C.int) {
-	C.lua_insert(L, idx)
+func Insert(L *C.lua_State, idx int32) {
+	C.lua_insert(L, C.int(idx))
 }
 
-func Replace(L *C.lua_State, idx C.int) {
-	C.lua_replace(L, idx)
+func Replace(L *C.lua_State, idx int32) {
+	C.lua_replace(L, C.int(idx))
 }
 
-func CheckStack(L *C.lua_State, sz C.int) bool {
-	return C.lua_checkstack(L, sz) != 0
+func CheckStack(L *C.lua_State, sz int32) bool {
+	return C.lua_checkstack(L, C.int(sz)) != 0
 }
 
-func RawCheckStack(L *C.lua_State, sz C.int) {
-	C.lua_rawcheckstack(L, sz)
+func RawCheckStack(L *C.lua_State, sz int32) {
+	C.lua_rawcheckstack(L, C.int(sz))
 }
 
-func XMove(from, to *C.lua_State, n C.int) {
-	C.lua_xmove(from, to, n)
+func XMove(from, to *C.lua_State, n int32) {
+	C.lua_xmove(from, to, C.int(n))
 }
 
-func XPush(from, to *C.lua_State, idx C.int) {
-	C.lua_xpush(from, to, idx)
+func XPush(from, to *C.lua_State, idx int32) {
+	C.lua_xpush(from, to, C.int(idx))
 }
 
 //
@@ -116,72 +116,71 @@ func XPush(from, to *C.lua_State, idx C.int) {
 // ======================
 //
 
-func IsNumber(L *C.lua_State, idx C.int) bool {
-	return C.lua_isnumber(L, idx) != 0
+func IsNumber(L *C.lua_State, idx int32) bool {
+	return C.lua_isnumber(L, C.int(idx)) != 0
 }
 
-func IsString(L *C.lua_State, idx C.int) bool {
-	return C.lua_isstring(L, idx) != 0
+func IsString(L *C.lua_State, idx int32) bool {
+	return C.lua_isstring(L, C.int(idx)) != 0
 }
 
-func IsCFunction(L *C.lua_State, idx C.int) bool {
-	return C.lua_iscfunction(L, idx) != 0
+func IsCFunction(L *C.lua_State, idx int32) bool {
+	return C.lua_iscfunction(L, C.int(idx)) != 0
 }
 
-func IsLFunction(L *C.lua_State, idx C.int) bool {
-	return C.lua_isLfunction(L, idx) != 0
+func IsLFunction(L *C.lua_State, idx int32) bool {
+	return C.lua_isLfunction(L, C.int(idx)) != 0
 }
 
-func IsUserData(L *C.lua_State, idx C.int) bool {
-	return C.lua_isuserdata(L, idx) != 0
+func IsUserData(L *C.lua_State, idx int32) bool {
+	return C.lua_isuserdata(L, C.int(idx)) != 0
 }
 
-func Type(L *C.lua_State, idx C.int) bool {
-	return C.lua_type(L, idx) != 0
+func Type(L *C.lua_State, idx int32) bool {
+	return C.lua_type(L, C.int(idx)) != 0
 }
 
-func TypeName(L *C.lua_State, tp C.int) *C.char {
-	return C.lua_typename(L, tp)
+func TypeName(L *C.lua_State, tp int32) string {
+	return C.GoString(C.lua_typename(L, C.int(tp)))
 }
 
-func Equal(L *C.lua_State, idx1, idx2 C.int) bool {
-	return C.lua_equal(L, idx1, idx2) != 0
+func Equal(L *C.lua_State, idx1, idx2 int32) bool {
+	return C.lua_equal(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func RawEqual(L *C.lua_State, idx1, idx2 C.int) bool {
-	return C.lua_rawequal(L, idx1, idx2) != 0
+func RawEqual(L *C.lua_State, idx1, idx2 int32) bool {
+	return C.lua_rawequal(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func LessThan(L *C.lua_State, idx1, idx2 C.int) bool {
-	return C.lua_lessthan(L, idx1, idx2) != 0
+func LessThan(L *C.lua_State, idx1, idx2 int32) bool {
+	return C.lua_lessthan(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func ToNumberX(L *C.lua_State, idx C.int, isnum bool) lua_Number {
+func ToNumberX(L *C.lua_State, idx int32, isnum bool) lua_Number {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Number(C.lua_tonumberx(L, idx, &isnumInner))
+	return lua_Number(C.lua_tonumberx(L, C.int(idx), &isnumInner))
 }
 
-func ToIntegerX(L *C.lua_State, idx C.int, isnum bool) lua_Integer {
+func ToIntegerX(L *C.lua_State, idx int32, isnum bool) lua_Integer {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Integer(C.lua_tointegerx(L, idx, &isnumInner))
+	return lua_Integer(C.lua_tointegerx(L, C.int(idx), &isnumInner))
 }
 
-func ToUnsignedX(L *C.lua_State, idx C.int, isnum bool) lua_Unsigned {
+func ToUnsignedX(L *C.lua_State, idx int32, isnum bool) lua_Unsigned {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Unsigned(C.lua_tounsignedx(L, idx, &isnumInner))
+	return lua_Unsigned(C.lua_tounsignedx(L, C.int(idx), &isnumInner))
 }
 
 // TODO: Rest of it
-// TODO: Convert C.* types in args to go types
