@@ -1,0 +1,13 @@
+{
+    "files.associations": {
+        "lobject.h": "c",
+        "lualib.h": "c",
+        "lua.h": "c",
+        "luaconf.h": "c",
+        "cstdint": "c",
+        "stdlib.h": "c"
+    },
+    "go.toolsEnvVars": {        
+        "CGO_LDFLAGS_ALLOW":".*"
+     }
+}
