@@ -71,13 +71,13 @@ func main() {
 		buildVm(artifactPath, cmakeFlags...)
 	}
 
-	buildArgs := []string{"build"}
+	buildTags := []string{}
 	if len(features) > 0 {
-		buildArgs = append(buildArgs, []string{"-tags", strings.Join(features, ",")}...)
+		buildTags = append(buildTags, []string{"-tags", strings.Join(features, ",")}...)
 	}
 
 	cmd, _, _, _ := Command("go").
-		WithArgs(append(buildArgs, goArgs...)...).
+		WithArgs(append(buildTags, goArgs...)...).
 		WithVar(
 			"CGO_LDFLAGS",
 			fmt.Sprintf("-L %s -lLuau.VM -lm -lstdc++", artifactDir),
