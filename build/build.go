@@ -77,9 +77,7 @@ func main() {
 	}
 
 	cmd, _, _, _ := Command("go").
-		WithArgs(append(
-			buildArgs, goArgs...,
-		)...).
+		WithArgs(append(buildArgs, goArgs...)...).
 		WithVar(
 			"CGO_LDFLAGS",
 			fmt.Sprintf("-L %s -lLuau.VM -lm -lstdc++", artifactDir),
