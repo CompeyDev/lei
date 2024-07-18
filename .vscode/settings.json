@@ -5,7 +5,8 @@
         "lua.h": "c",
         "luaconf.h": "c",
         "cstdint": "c",
-        "stdlib.h": "c"
+        "stdlib.h": "c",
+        "cmath": "cpp"
     },
     "go.toolsEnvVars": {        
         "CGO_LDFLAGS_ALLOW":".*"
