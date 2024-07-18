@@ -16,7 +16,7 @@ func bail(err error) {
 	}
 }
 
-func buildVm(artifactDir string, artifactPath string, cmakeFlags ...string) {
+func buildVm(artifactPath string, cmakeFlags ...string) {
 	dir, homeDirErr := os.MkdirTemp("", "lei-build")
 	bail(homeDirErr)
 
@@ -35,9 +35,9 @@ func buildVm(artifactDir string, artifactPath string, cmakeFlags ...string) {
 	Exec("cmake", buildDir, "--build", ".", "--target Luau.VM", "--config", "RelWithDebInfo")
 
 	// Copy the artifact to the artifact directory
-	artifactFile, artifactErr := os.ReadFile(artifactPath)
+	artifactFile, artifactErr := os.ReadFile(path.Join(buildDir, ARTIFACT_NAME))
 	bail(artifactErr)
-	bail(os.WriteFile(path.Join(artifactDir, ARTIFACT_NAME), artifactFile, os.ModePerm))
+	bail(os.WriteFile(artifactPath, artifactFile, os.ModePerm))
 }
 
 func main() {
@@ -68,7 +68,7 @@ func main() {
 	if _, err := os.Stat(artifactPath); err == nil {
 		fmt.Printf("[build] Using existing artifact at %s\n", artifactPath)
 	} else {
-		buildVm(artifactDir, artifactPath, cmakeFlags...)
+		buildVm(artifactPath, cmakeFlags...)
 	}
 
 	buildArgs := []string{"build"}
