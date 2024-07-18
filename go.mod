@@ -1,3 +1,3 @@
-module github.com/CompeyDev/gluau
+module github.com/CompeyDev/lei
 
 go 1.19

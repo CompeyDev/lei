@@ -17,7 +17,7 @@ func bail(err error) {
 }
 
 func buildVm(artifactDir string, artifactPath string, cmakeFlags ...string) {
-	dir, homeDirErr := os.MkdirTemp("", "gluau-build")
+	dir, homeDirErr := os.MkdirTemp("", "lei-build")
 	bail(homeDirErr)
 
 	defer os.RemoveAll(dir)
@@ -44,7 +44,7 @@ func main() {
 	homeDir, homeDirErr := os.UserHomeDir()
 	bail(homeDirErr)
 
-	artifactDir := path.Join(homeDir, ".gluau")
+	artifactDir := path.Join(homeDir, ".lei")
 	artifactPath := path.Join(artifactDir, ARTIFACT_NAME)
 
 	bail(os.MkdirAll(artifactDir, os.ModePerm))
