@@ -16,3 +16,7 @@ l_noret cluaL_errorL(lua_State* L, char* msg)
 {
 	luaL_errorL(L, msg);
 }
+
+void clua_pushcclosurek(lua_State* L, void* f, char* debugname, int nup, void* cont) {
+	return lua_pushcclosurek(L, f, debugname, nup, cont);
+}

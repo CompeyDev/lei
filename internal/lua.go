@@ -11,22 +11,23 @@ package internal
 import "C"
 import "unsafe"
 
-type lua_Number float64
-type lua_Integer int32
-type lua_Unsigned int32
+type LuaNumber float64
+type LuaInteger int32
+type LuaUnsigned int32
 
-type lua_CFunction func(L *C.lua_State) int32
-type lua_Continuation func(L *C.lua_State, status int32) int32
+type LuaState = C.lua_State
+type LuaCFunction func(L *LuaState) int32
+type LuaContinuation func(L *LuaState, status int32) int32
 
-type lua_Udestructor = func(*C.void)
-type lua_Destructor = func(L *C.lua_State, _ unsafe.Pointer)
+type LuaUDestructor = func(*C.void)
+type LuaDestructor = func(L *LuaState, _ unsafe.Pointer)
 
-// type lua_Alloc = func(ud, ptr *C.void, osize, nsize C.size_t) *C.void
-type lua_Alloc = func(ptr unsafe.Pointer, osize, nsize uint64) unsafe.Pointer
+// type LuaAlloc = func(ud, ptr *C.void, osize, nsize C.size_t) *C.void
+type LuaAlloc = func(ptr unsafe.Pointer, osize, nsize uint64) unsafe.Pointer
 
 //export go_allocf
 func go_allocf(fp uintptr, ptr uintptr, osize uint64, nsize uint64) uintptr {
-	p := ((*((*lua_Alloc)(unsafe.Pointer(fp))))(unsafe.Pointer(ptr), osize, nsize))
+	p := ((*((*LuaAlloc)(unsafe.Pointer(fp))))(unsafe.Pointer(ptr), osize, nsize))
 	return uintptr(p)
 }
 
@@ -36,27 +37,27 @@ func go_allocf(fp uintptr, ptr uintptr, osize uint64, nsize uint64) uintptr {
 // ==================
 //
 
-func NewState(ud unsafe.Pointer) *C.lua_State {
+func NewState(ud unsafe.Pointer) *LuaState {
 	return C.clua_newstate(unsafe.Pointer(ud))
 }
 
-func LuaClose(L *C.lua_State) {
+func LuaClose(L *LuaState) {
 	C.lua_close(L)
 }
 
-func NewThread(L *C.lua_State) *C.lua_State {
+func NewThread(L *LuaState) *LuaState {
 	return C.lua_newthread(L)
 }
 
-func MainThread(L *C.lua_State) *C.lua_State {
+func MainThread(L *LuaState) *LuaState {
 	return C.lua_mainthread(L)
 }
 
-func ResetThread(L *C.lua_State) {
+func ResetThread(L *LuaState) {
 	C.lua_resetthread(L)
 }
 
-func IsThreadReset(L *C.lua_State) bool {
+func IsThreadReset(L *LuaState) bool {
 	return C.lua_isthreadreset(L) != 0
 }
 
@@ -66,47 +67,47 @@ func IsThreadReset(L *C.lua_State) bool {
 // ==================
 //
 
-func AbsIndex(L *C.lua_State, idx int32) int32 {
+func AbsIndex(L *LuaState, idx int32) int32 {
 	return int32(C.lua_absindex(L, C.int(idx)))
 }
 
-func GetTop(L *C.lua_State) int32 {
+func GetTop(L *LuaState) int32 {
 	return int32(C.lua_gettop(L))
 }
 
-func SetTop(L *C.lua_State, idx int32) {
+func SetTop(L *LuaState, idx int32) {
 	C.lua_settop(L, C.int(idx))
 }
 
-func PushValue(L *C.lua_State, idx int32) {
+func PushValue(L *LuaState, idx int32) {
 	C.lua_pushvalue(L, C.int(idx))
 }
 
-func Remove(L *C.lua_State, idx int32) {
+func Remove(L *LuaState, idx int32) {
 	C.lua_remove(L, C.int(idx))
 }
 
-func Insert(L *C.lua_State, idx int32) {
+func Insert(L *LuaState, idx int32) {
 	C.lua_insert(L, C.int(idx))
 }
 
-func Replace(L *C.lua_State, idx int32) {
+func Replace(L *LuaState, idx int32) {
 	C.lua_replace(L, C.int(idx))
 }
 
-func CheckStack(L *C.lua_State, sz int32) bool {
+func CheckStack(L *LuaState, sz int32) bool {
 	return C.lua_checkstack(L, C.int(sz)) != 0
 }
 
-func RawCheckStack(L *C.lua_State, sz int32) {
+func RawCheckStack(L *LuaState, sz int32) {
 	C.lua_rawcheckstack(L, C.int(sz))
 }
 
-func XMove(from, to *C.lua_State, n int32) {
+func XMove(from, to *LuaState, n int32) {
 	C.lua_xmove(from, to, C.int(n))
 }
 
-func XPush(from, to *C.lua_State, idx int32) {
+func XPush(from, to *LuaState, idx int32) {
 	C.lua_xpush(from, to, C.int(idx))
 }
 
@@ -116,139 +117,139 @@ func XPush(from, to *C.lua_State, idx int32) {
 // ======================
 //
 
-func IsNumber(L *C.lua_State, idx int32) bool {
+func IsNumber(L *LuaState, idx int32) bool {
 	return C.lua_isnumber(L, C.int(idx)) != 0
 }
 
-func IsString(L *C.lua_State, idx int32) bool {
+func IsString(L *LuaState, idx int32) bool {
 	return C.lua_isstring(L, C.int(idx)) != 0
 }
 
-func IsCFunction(L *C.lua_State, idx int32) bool {
+func IsCFunction(L *LuaState, idx int32) bool {
 	return C.lua_iscfunction(L, C.int(idx)) != 0
 }
 
-func IsLFunction(L *C.lua_State, idx int32) bool {
+func IsLFunction(L *LuaState, idx int32) bool {
 	return C.lua_isLfunction(L, C.int(idx)) != 0
 }
 
-func IsUserData(L *C.lua_State, idx int32) bool {
+func IsUserData(L *LuaState, idx int32) bool {
 	return C.lua_isuserdata(L, C.int(idx)) != 0
 }
 
-func Type(L *C.lua_State, idx int32) bool {
+func Type(L *LuaState, idx int32) bool {
 	return C.lua_type(L, C.int(idx)) != 0
 }
 
-func TypeName(L *C.lua_State, tp int32) string {
+func TypeName(L *LuaState, tp int32) string {
 	return C.GoString(C.lua_typename(L, C.int(tp)))
 }
 
-func Equal(L *C.lua_State, idx1, idx2 int32) bool {
+func Equal(L *LuaState, idx1, idx2 int32) bool {
 	return C.lua_equal(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func RawEqual(L *C.lua_State, idx1, idx2 int32) bool {
+func RawEqual(L *LuaState, idx1, idx2 int32) bool {
 	return C.lua_rawequal(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func LessThan(L *C.lua_State, idx1, idx2 int32) bool {
+func LessThan(L *LuaState, idx1, idx2 int32) bool {
 	return C.lua_lessthan(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func ToNumberX(L *C.lua_State, idx int32, isnum bool) lua_Number {
+func ToNumberX(L *LuaState, idx int32, isnum bool) LuaNumber {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Number(C.lua_tonumberx(L, C.int(idx), &isnumInner))
+	return LuaNumber(C.lua_tonumberx(L, C.int(idx), &isnumInner))
 }
 
-func ToIntegerX(L *C.lua_State, idx int32, isnum bool) lua_Integer {
+func ToIntegerX(L *LuaState, idx int32, isnum bool) LuaInteger {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Integer(C.lua_tointegerx(L, C.int(idx), &isnumInner))
+	return LuaInteger(C.lua_tointegerx(L, C.int(idx), &isnumInner))
 }
 
-func ToUnsignedX(L *C.lua_State, idx int32, isnum bool) lua_Unsigned {
+func ToUnsignedX(L *LuaState, idx int32, isnum bool) LuaUnsigned {
 	isnumInner := C.int(0)
 	if isnum {
 		isnumInner = C.int(1)
 	}
 
-	return lua_Unsigned(C.lua_tounsignedx(L, C.int(idx), &isnumInner))
+	return LuaUnsigned(C.lua_tounsignedx(L, C.int(idx), &isnumInner))
 }
 
-func ToVector(L *C.lua_State, idx int32) {
+func ToVector(L *LuaState, idx int32) {
 	C.lua_tovector(L, C.int(idx))
 }
 
-func ToBoolean(L *C.lua_State, idx int32) bool {
+func ToBoolean(L *LuaState, idx int32) bool {
 	return C.lua_toboolean(L, C.int(idx)) != 0
 }
 
-func ToLString(L *C.lua_State, idx int32, len *uint64) string {
+func ToLString(L *LuaState, idx int32, len *uint64) string {
 	return C.GoString(C.lua_tolstring(L, C.int(idx), (*C.size_t)(len)))
 }
 
-func ToStringAtom(L *C.lua_State, idx int32, atom *int32) string {
+func ToStringAtom(L *LuaState, idx int32, atom *int32) string {
 	return C.GoString(C.lua_tostringatom(L, C.int(idx), (*C.int)(atom)))
 }
 
-func NameCallAtom(L *C.lua_State, atom *int32) string {
+func NameCallAtom(L *LuaState, atom *int32) string {
 	return C.GoString(C.lua_namecallatom(L, (*C.int)(atom)))
 }
 
-func ObjLen(L *C.lua_State, idx int32) uint64 {
+func ObjLen(L *LuaState, idx int32) uint64 {
 	return uint64(C.lua_objlen(L, C.int(idx)))
 }
 
-func ToCFunction(L *C.lua_State, idx int32) lua_CFunction {
+func ToCFunction(L *LuaState, idx int32) LuaCFunction {
 	p := unsafe.Pointer(C.lua_tocfunction(L, C.int(idx)))
 	if p == C.NULL {
 		return nil
 	}
 
-	return *(*lua_CFunction)(p)
+	return *(*LuaCFunction)(p)
 }
 
-func ToLightUserdata(L *C.lua_State, idx int32) unsafe.Pointer {
+func ToLightUserdata(L *LuaState, idx int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_tolightuserdata(L, C.int(idx)))
 }
 
-func ToLightUserdataTagged(L *C.lua_State, idx int32, tag int32) unsafe.Pointer {
+func ToLightUserdataTagged(L *LuaState, idx int32, tag int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_tolightuserdatatagged(L, C.int(idx), C.int(tag)))
 }
 
-func ToUserdata(L *C.lua_State, idx int32) unsafe.Pointer {
+func ToUserdata(L *LuaState, idx int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_touserdata(L, C.int(idx)))
 }
 
-func ToUserdataTagged(L *C.lua_State, idx int32, tag int32) unsafe.Pointer {
+func ToUserdataTagged(L *LuaState, idx int32, tag int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_touserdatatagged(L, C.int(idx), C.int(tag)))
 }
 
-func UserdataTag(L *C.lua_State, idx int32) int32 {
+func UserdataTag(L *LuaState, idx int32) int32 {
 	return int32(C.lua_userdatatag(L, C.int(idx)))
 }
 
-func LightUserdataTag(L *C.lua_State, idx int32) int32 {
+func LightUserdataTag(L *LuaState, idx int32) int32 {
 	return int32(C.lua_lightuserdatatag(L, C.int(idx)))
 }
 
-func ToThread(L *C.lua_State, idx int32) *C.lua_State {
+func ToThread(L *LuaState, idx int32) *LuaState {
 	return C.lua_tothread(L, C.int(idx))
 }
 
-func ToBuffer(L *C.lua_State, idx int32, len *uint64) unsafe.Pointer {
+func ToBuffer(L *LuaState, idx int32, len *uint64) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_tobuffer(L, C.int(idx), (*C.size_t)(len)))
 }
 
-func ToPointer(L *C.lua_State, idx int32) unsafe.Pointer {
+func ToPointer(L *LuaState, idx int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_topointer(L, C.int(idx)))
 }
 
@@ -256,18 +257,52 @@ func ToPointer(L *C.lua_State, idx int32) unsafe.Pointer {
 // 	 Stack Manipulation
 // =======================
 
-func PushNil(L *C.lua_State) {
+func PushNil(L *LuaState) {
 	C.lua_pushnil(L)
 }
 
-func PushNumber(L *C.lua_State, n lua_Number) {
+func PushNumber(L *LuaState, n LuaNumber) {
 	C.lua_pushnumber(L, C.lua_Number(n))
 }
 
-func PushInteger(L *C.lua_State, n lua_Integer) {
+func PushInteger(L *LuaState, n LuaInteger) {
 	C.lua_pushinteger(L, C.lua_Integer(n))
 }
 
-// TODO: Vector 3 & 4
+func PushUnsigned(L *LuaState, n LuaUnsigned) {
+	C.lua_pushunsigned(L, C.lua_Unsigned(n))
+}
+
+func PushLString(L *LuaState, s string, l uint64) {
+	cs := C.CString(s)
+	defer C.free(unsafe.Pointer(cs))
+
+	C.lua_pushlstring(L, cs, C.size_t(l))
+}
+
+func PushString(L *LuaState, s string) {
+	cs := C.CString(s)
+	defer C.free(unsafe.Pointer(cs))
+
+	C.lua_pushstring(L, cs)
+}
+
+// NOTE: We can't have lua_pushfstringL, since varadic
+// arguments from Go->C isn't something that is possible.
+// func PushFStringL(L *lua_State, fmt string) {}
+
+func PushCClosureK(L *LuaState, f LuaCFunction, debugname string, nup int32, cont LuaContinuation) {
+	cdebugname := C.CString(debugname)
+	defer C.free(unsafe.Pointer(cdebugname))
+
+	var ccont unsafe.Pointer
+	if cont == nil {
+		ccont = C.NULL
+	} else {
+		ccont = unsafe.Pointer(&cont)
+	}
+
+	C.clua_pushcclosurek(L, unsafe.Pointer(&f), cdebugname, C.int(nup), ccont)
+}
 
 // TODO: Rest of it

@@ -9,6 +9,6 @@ package internal
 */
 import "C"
 
-func PushVector(L *C.lua_State, x float32, y float32, z float32) {
+func PushVector(L *LuaState, x float32, y float32, z float32) {
 	C.lua_pushvector(L, C.float(x), C.float(y), C.float(z))
 }

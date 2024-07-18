@@ -27,51 +27,51 @@ static void freeCharArray(char** a, int size) {
 import "C"
 import "unsafe"
 
-type luaL_Reg C.luaL_Reg
+type LuaLReg C.luaL_Reg
 
-func LRegister(L *C.lua_State, libname string, l *luaL_Reg) {
+func LRegister(L *LuaState, libname string, l *LuaLReg) {
 	clibname := C.CString(libname)
 	defer C.free(unsafe.Pointer(clibname))
 
 	C.luaL_register(L, clibname, (*C.luaL_Reg)(l))
 }
 
-func LGetMetaField(L *C.lua_State, obj int32, e string) int32 {
+func LGetMetaField(L *LuaState, obj int32, e string) int32 {
 	ce := C.CString(e)
 	defer C.free(unsafe.Pointer(ce))
 
 	return int32(C.luaL_getmetafield(L, C.int(obj), ce))
 }
 
-func LCallMeta(L *C.lua_State, obj int32, e string) int32 {
+func LCallMeta(L *LuaState, obj int32, e string) int32 {
 	ce := C.CString(e)
 	defer C.free(unsafe.Pointer(ce))
 
 	return int32(C.luaL_callmeta(L, C.int(obj), ce))
 }
 
-func LTypeError(L *C.lua_State, narg int32, tname string) {
+func LTypeError(L *LuaState, narg int32, tname string) {
 	ctname := C.CString(tname)
 	defer C.free(unsafe.Pointer(ctname))
 
 	C.luaL_typeerrorL(L, C.int(narg), ctname)
 }
 
-func LArgError(L *C.lua_State, narg int32, extramsg string) {
+func LArgError(L *LuaState, narg int32, extramsg string) {
 	cextramsg := C.CString(extramsg)
 	defer C.free(unsafe.Pointer(cextramsg))
 
 	C.luaL_argerrorL(L, C.int(narg), cextramsg)
 }
 
-func LCheckLString(L *C.lua_State, narg int32, l *uint64) string {
+func LCheckLString(L *LuaState, narg int32, l *uint64) string {
 	p := C.luaL_checklstring(L, C.int(narg), (*C.size_t)(l))
 	defer C.free(unsafe.Pointer(p))
 
 	return C.GoString(p)
 }
 
-func LOptLString(L *C.lua_State, narg int32, def string, l *uint64) string {
+func LOptLString(L *LuaState, narg int32, def string, l *uint64) string {
 	cdef := C.CString(def)
 	defer C.free(unsafe.Pointer(cdef))
 
@@ -81,19 +81,19 @@ func LOptLString(L *C.lua_State, narg int32, def string, l *uint64) string {
 	return C.GoString(p)
 }
 
-func LCheckNumber(L *C.lua_State, narg int32) lua_Number {
-	return lua_Number(C.luaL_checknumber(L, C.int(narg)))
+func LCheckNumber(L *LuaState, narg int32) LuaNumber {
+	return LuaNumber(C.luaL_checknumber(L, C.int(narg)))
 }
 
-func LOptNumber(L *C.lua_State, narg int32, def lua_Number) lua_Number {
-	return lua_Number(C.luaL_optnumber(L, C.int(narg), C.lua_Number(def)))
+func LOptNumber(L *LuaState, narg int32, def LuaNumber) LuaNumber {
+	return LuaNumber(C.luaL_optnumber(L, C.int(narg), C.lua_Number(def)))
 }
 
-func LCheckBoolean(L *C.lua_State, narg int32) bool {
+func LCheckBoolean(L *LuaState, narg int32) bool {
 	return C.luaL_checkboolean(L, C.int(narg)) != 0
 }
 
-func LOptBoolean(L *C.lua_State, narg int32, def bool) bool {
+func LOptBoolean(L *LuaState, narg int32, def bool) bool {
 	cdef := C.int(0)
 	if def {
 		cdef = C.int(1)
@@ -102,64 +102,64 @@ func LOptBoolean(L *C.lua_State, narg int32, def bool) bool {
 	return C.luaL_optboolean(L, C.int(narg), cdef) != 0
 }
 
-func LCheckInteger(L *C.lua_State, narg int32) lua_Integer {
-	return lua_Integer(C.luaL_checkinteger(L, C.int(narg)))
+func LCheckInteger(L *LuaState, narg int32) LuaInteger {
+	return LuaInteger(C.luaL_checkinteger(L, C.int(narg)))
 }
 
-func LOptInteger(L *C.lua_State, narg int32, def lua_Integer) lua_Integer {
-	return lua_Integer(C.luaL_optinteger(L, C.int(narg), C.lua_Integer(def)))
+func LOptInteger(L *LuaState, narg int32, def LuaInteger) LuaInteger {
+	return LuaInteger(C.luaL_optinteger(L, C.int(narg), C.lua_Integer(def)))
 }
 
-func LCheckUnsigned(L *C.lua_State, narg int32) lua_Unsigned {
-	return lua_Unsigned(C.luaL_checkunsigned(L, C.int(narg)))
+func LCheckUnsigned(L *LuaState, narg int32) LuaUnsigned {
+	return LuaUnsigned(C.luaL_checkunsigned(L, C.int(narg)))
 }
 
-func LOptUnsigned(L *C.lua_State, narg int32, def lua_Unsigned) lua_Unsigned {
-	return lua_Unsigned(C.luaL_optunsigned(L, C.int(narg), C.lua_Unsigned(def)))
+func LOptUnsigned(L *LuaState, narg int32, def LuaUnsigned) LuaUnsigned {
+	return LuaUnsigned(C.luaL_optunsigned(L, C.int(narg), C.lua_Unsigned(def)))
 }
 
-func LCheckVector(L *C.lua_State, narg int32) *float32 {
+func LCheckVector(L *LuaState, narg int32) *float32 {
 	return (*float32)(C.luaL_checkvector(L, C.int(narg)))
 }
 
-func LOptVector(L *C.lua_State, narg int32, def *float32) *float32 {
+func LOptVector(L *LuaState, narg int32, def *float32) *float32 {
 	return (*float32)(C.luaL_optvector(L, C.int(narg), (*C.float)(def)))
 }
 
-func LCheckStack(L *C.lua_State, sz int32, msg string) {
+func LCheckStack(L *LuaState, sz int32, msg string) {
 	cmsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cmsg))
 
 	C.luaL_checkstack(L, C.int(sz), cmsg)
 }
 
-func LCheckType(L *C.lua_State, narg int32, t int32) {
+func LCheckType(L *LuaState, narg int32, t int32) {
 	C.luaL_checktype(L, C.int(narg), C.int(t))
 }
 
-func LCheckAny(L *C.lua_State, narg int32) {
+func LCheckAny(L *LuaState, narg int32) {
 	C.luaL_checkany(L, C.int(narg))
 }
 
-func LNewMetatable(L *C.lua_State, tname string) bool {
+func LNewMetatable(L *LuaState, tname string) bool {
 	ctname := C.CString(tname)
 	defer C.free(unsafe.Pointer(ctname))
 
 	return C.luaL_newmetatable(L, ctname) != 0
 }
 
-func LCheckUdata(L *C.lua_State, ud int32, tname string) unsafe.Pointer {
+func LCheckUdata(L *LuaState, ud int32, tname string) unsafe.Pointer {
 	ctname := C.CString(tname)
 	defer C.free(unsafe.Pointer(ctname))
 
 	return C.luaL_checkudata(L, C.int(ud), ctname)
 }
 
-func LCheckBuffer(L *C.lua_State, narg int32, len *uint64) unsafe.Pointer {
+func LCheckBuffer(L *LuaState, narg int32, len *uint64) unsafe.Pointer {
 	return C.luaL_checkbuffer(L, C.int(narg), (*C.size_t)(len))
 }
 
-func LWhere(L *C.lua_State, lvl int32) {
+func LWhere(L *LuaState, lvl int32) {
 	C.luaL_where(L, C.int(lvl))
 }
 
@@ -167,14 +167,14 @@ func LWhere(L *C.lua_State, lvl int32) {
 // expect the user to format the message and hand it over to us, which we
 // pass to luaL_errorL. This is an inconsistency with the actual C API, but
 // there isn't really anything we can do.
-func LErrorL(L *C.lua_State, msg string) {
+func LErrorL(L *LuaState, msg string) {
 	cmsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cmsg))
 
 	C.cluaL_errorL(L, cmsg)
 }
 
-func LCheckOption(L *C.lua_State, narg int32, def string, lst []string) int32 {
+func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {
 	cdef := C.CString(def)
 	defer C.free(unsafe.Pointer(cdef))
 
@@ -187,26 +187,26 @@ func LCheckOption(L *C.lua_State, narg int32, def string, lst []string) int32 {
 	return int32(C.luaL_checkoption(L, C.int(narg), cdef, clst))
 }
 
-func LToLString(L *C.lua_State, idx int32, len *uint64) string {
+func LToLString(L *LuaState, idx int32, len *uint64) string {
 	p := C.luaL_tolstring(L, C.int(idx), (*C.size_t)(len))
 	defer C.free(unsafe.Pointer(p))
 
 	return C.GoString(p)
 }
 
-func LNewState() *C.lua_State {
+func LNewState() *LuaState {
 	return C.luaL_newstate()
 }
 
-func LTypeName(L *C.lua_State, idx int32) string {
+func LTypeName(L *LuaState, idx int32) string {
 	return C.GoString(C.luaL_typename(L, C.int(idx)))
 }
 
-func LSandbox(L *C.lua_State) {
+func LSandbox(L *LuaState) {
 	C.luaL_sandbox(L)
 }
 
-func LSandboxThread(L *C.lua_State) {
+func LSandboxThread(L *LuaState) {
 	C.luaL_sandboxthread(L)
 }
 
@@ -214,23 +214,23 @@ func LSandboxThread(L *C.lua_State) {
 // Some useful macros
 //
 
-func LArgCheck(L *C.lua_State, cond bool, arg int32, extramsg string) {
+func LArgCheck(L *LuaState, cond bool, arg int32, extramsg string) {
 	if cond {
 		LArgError(L, arg, extramsg)
 	}
 }
 
-func LArgExpected(L *C.lua_State, cond bool, arg int32, tname string) {
+func LArgExpected(L *LuaState, cond bool, arg int32, tname string) {
 	if cond {
 		LTypeError(L, arg, tname)
 	}
 }
 
-func LCheckString(L *C.lua_State, n int32) string {
+func LCheckString(L *LuaState, n int32) string {
 	return LCheckLString(L, n, nil)
 }
 
-func LOptString(L *C.lua_State, n int32, d string) string {
+func LOptString(L *LuaState, n int32, d string) string {
 	return LOptLString(L, n, d, nil)
 }
 
