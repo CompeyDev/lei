@@ -2,7 +2,7 @@ package internal
 
 /*
 #cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
-#cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM
+#cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
@@ -269,8 +269,5 @@ func PushInteger(L *C.lua_State, n lua_Integer) {
 }
 
 // TODO: Vector 3 & 4
-func PushVector(L *C.lua_State, x float32, y float32, z float32) {
-	C.lua_pushvector(L, C.float(x), C.float(y), C.float(z))
-}
 
 // TODO: Rest of it

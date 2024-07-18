@@ -2,7 +2,7 @@ package internal
 
 /*
 #cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
-#cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM
+#cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
