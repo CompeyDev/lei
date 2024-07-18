@@ -7,7 +7,8 @@
         "cstdint": "c",
         "stdlib.h": "c",
         "cmath": "cpp",
-        "stdio.h": "c"
+        "stdio.h": "c",
+        "_cgo_export.h": "c"
     },
     "go.toolsEnvVars": {        
         "CGO_LDFLAGS_ALLOW":".*"

@@ -11,6 +11,47 @@ package internal
 import "C"
 import "unsafe"
 
+const (
+	LUA_OK = iota + 1
+	LUA_YIELD
+	LUA_ERRRUN
+	LUA_ERRSYNTAX
+	LUA_ERRMEM
+	LUA_ERRERR
+	LUA_BREAK
+)
+
+const (
+	LUA_CORUN = iota + 1
+	LUA_COSUS
+	LUA_CONOR
+	LUA_COFIN
+	LUA_COERR
+)
+
+const (
+	LUA_TNIL = iota
+	LUA_TBOOLEAN
+
+	LUA_TLIGHTUSERDATA
+	LUA_TNUMBER
+	LUA_TVECTOR
+
+	LUA_TSTRING
+
+	LUA_TTABLE
+	LUA_TFUNCTION
+	LUA_TUSERDATA
+	LUA_THREAD
+	LUA_TBUFFER
+
+	LUA_TPROTO
+	LUA_TUPVAL
+	LUA_TDEADKEY
+
+	LUA_T_COUNT = LUA_TPROTO
+)
+
 type LuaNumber float64
 type LuaInteger int32
 type LuaUnsigned int32
@@ -258,9 +299,11 @@ func ToPointer(L *LuaState, idx int32) unsafe.Pointer {
 	return unsafe.Pointer(C.lua_topointer(L, C.int(idx)))
 }
 
+//
 // =======================
 // 	 Stack Manipulation
 // =======================
+//
 
 func PushNil(L *LuaState) {
 	C.lua_pushnil(L)
@@ -312,6 +355,233 @@ func PushCClosureK(L *LuaState, f LuaCFunction, debugname string, nup int32, con
 	*(*LuaCFunction)(cf) = f
 
 	C.clua_pushcclosurek(L, cf, cdebugname, C.int(nup), ccont)
+}
+
+func PushBoolean(L *LuaState, b bool) {
+	cb := C.int(0)
+	if b {
+		cb = C.int(1)
+	}
+
+	C.lua_pushboolean(L, cb)
+}
+
+func PushThread(L *LuaState) bool {
+	return C.lua_pushthread(L) != 0
+}
+
+func PushLightUserdataTagged(L *LuaState, p unsafe.Pointer, tag int32) {
+	C.lua_pushlightuserdatatagged(L, p, C.int(tag))
+}
+
+func NewUserdataTagged(L *LuaState, sz uint64, tag int32) unsafe.Pointer {
+	return C.lua_newuserdatatagged(L, C.size_t(sz), C.int(tag))
+}
+
+func NewUserdataDtor(L *LuaState, sz uint64, dtor LuaUDestructor) unsafe.Pointer {
+	cdtor := C.malloc(C.size_t(unsafe.Sizeof(dtor)))
+	*(*LuaUDestructor)(cdtor) = dtor
+
+	return C.clua_newuserdatadtor(L, C.size_t(sz), cdtor)
+}
+
+func NewBuffer(L *LuaState, sz uint64) unsafe.Pointer {
+	return C.lua_newbuffer(L, C.size_t(sz))
+}
+
+//
+// ===================
+// 	  Get Functions
+// ===================
+//
+
+func GetTable(L *LuaState, idx int32) int32 {
+	return int32(C.lua_gettable(L, C.int(idx)))
+}
+
+func GetField(L *LuaState, idx int32, k string) int32 {
+	ck := C.CString(k)
+	defer C.free(unsafe.Pointer(ck))
+
+	return int32(C.lua_getfield(L, C.int(idx), ck))
+}
+
+func RawGetField(L *LuaState, idx int32, k string) int32 {
+	ck := C.CString(k)
+	defer C.free(unsafe.Pointer(ck))
+
+	return int32(C.lua_rawgetfield(L, C.int(idx), ck))
+}
+
+func RawGet(L *LuaState, idx int32) int32 {
+	return int32(C.lua_rawget(L, C.int(idx)))
+}
+
+func RawGetI(L *LuaState, idx int32, n int32) int32 {
+	return int32(C.lua_rawgeti(L, C.int(idx), C.int(n)))
+}
+
+func CreateTable(L *LuaState, narr int32, nrec int32) {
+	C.lua_createtable(L, C.int(narr), C.int(nrec))
+}
+
+func SetReadonly(L *LuaState, idx int32, enabled bool) {
+	cenabled := C.int(0)
+	if enabled {
+		cenabled = C.int(1)
+	}
+
+	C.lua_setreadonly(L, C.int(idx), cenabled)
+}
+
+func GetReadonly(L *LuaState, idx int32) bool {
+	return C.lua_getreadonly(L, C.int(idx)) != 0
+}
+
+func SetSafeEnv(L *LuaState, idx int32, enabled bool) {
+	cenabled := C.int(0)
+	if enabled {
+		cenabled = C.int(1)
+	}
+
+	C.lua_setsafeenv(L, C.int(idx), cenabled)
+}
+
+func Getfenv(L *LuaState, idx int32) {
+	C.lua_getfenv(L, C.int(idx))
+}
+
+//
+// ===================
+//    Set Functions
+// ===================
+//
+
+func SetTable(L *LuaState, idx int32) {
+	C.lua_settable(L, C.int(idx))
+}
+
+func SetField(L *LuaState, idx int32, k string) {
+	ck := C.CString(k)
+	defer C.free(unsafe.Pointer(ck))
+
+	C.lua_setfield(L, C.int(idx), ck)
+}
+
+func RawSetI(L *LuaState, idx int32, n int32) {
+	C.lua_rawseti(L, C.int(idx), C.int(n))
+}
+
+func SetMetatable(L *LuaState, objindex int32) int32 {
+	return int32(C.lua_setmetatable(L, C.int(objindex)))
+}
+
+func Setfenv(L *LuaState, idx int32) int32 {
+	return int32(C.lua_setfenv(L, C.int(idx)))
+}
+
+//
+// =========================
+//    Bytecode Functions
+// =========================
+//
+
+func LuauLoad(L *LuaState, chunkname string, data string, size uint64, env int32) int32 {
+	cchunkname := C.CString(chunkname)
+	defer C.free(unsafe.Pointer(cchunkname))
+
+	cdata := C.CString(data)
+	defer C.free(unsafe.Pointer(cdata))
+
+	return int32(C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)))
+}
+
+func LuaCall(L *LuaState, nargs int32, nresults int32) {
+	C.lua_call(L, C.int(nargs), C.int(nresults))
+}
+
+func LuaPcall(L *LuaState, nargs int32, nresults int32, errfunc int32) int32 {
+	return int32(C.lua_pcall(L, C.int(nargs), C.int(nresults), C.int(errfunc)))
+}
+
+//
+// ========================
+//   Coroutine Functions
+// ========================
+//
+
+func LuaYield(L *LuaState, nresults int32) int32 {
+	return int32(C.lua_yield(L, C.int(nresults)))
+}
+
+func LuaBreak(L *LuaState) int32 {
+	return int32(C.lua_break(L))
+}
+
+func LuaResume(L *LuaState, from *LuaState, nargs int32) int32 {
+	return int32(C.lua_resume(L, from, C.int(nargs)))
+}
+
+func LuaResumeError(L *LuaState, from *LuaState) int32 {
+	return int32(C.lua_resumeerror(L, from))
+}
+
+func LuaStatus(L *LuaState) int32 {
+	return int32(C.lua_status(L))
+}
+
+func IsYieldable(L *LuaState) bool {
+	return C.lua_isyieldable(L) != 0
+}
+
+func GetThreadData(L *LuaState) unsafe.Pointer {
+	return C.lua_getthreaddata(L)
+}
+
+func SetThreadData(L *LuaState, data unsafe.Pointer) {
+	C.lua_setthreaddata(L, data)
+}
+
+//
+// ======================
+//   Garbage Collection
+// ======================
+//
+
+const (
+	LUA_GCSTOP = iota
+	LUA_GCRESTART
+
+	LUA_GCCOLLECT
+
+	LUA_GCCOUNT
+	LUA_GCCOUNTB
+
+	LUA_GCISRUNNING
+
+	LUA_GCSTEP
+
+	LUA_GCSETGOAL
+	LUA_GCSETSTEPMUL
+	LUA_GCSETSTEPSIZE
+)
+
+func LuaGc(L *LuaState, what int32, data int32) int32 {
+	return int32(C.lua_gc(L, C.int(what), C.int(data)))
+}
+
+//
+// ======================
+//   Memory Statistics
+// ======================
+//
+
+func SetMemCat(L *LuaState, category int32) {
+	C.lua_setmemcat(L, C.int(category))
+}
+
+func TotalBytes(L *LuaState, category int32) uint64 {
+	return uint64(C.lua_totalbytes(L, C.int(category)))
 }
 
 // TODO: Rest of it
