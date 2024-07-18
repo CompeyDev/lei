@@ -22,14 +22,13 @@ type LuaContinuation func(L *LuaState, status int32) int32
 type LuaUDestructor = func(*C.void)
 type LuaDestructor = func(L *LuaState, _ unsafe.Pointer)
 
-// type LuaAlloc = func(ud, ptr *C.void, osize, nsize C.size_t) *C.void
-type LuaAlloc = func(ptr unsafe.Pointer, osize, nsize uint64) unsafe.Pointer
+type LuaAlloc = func(ud, ptr unsafe.Pointer, osize, nsize C.size_t) *C.void
 
-//export go_allocf
-func go_allocf(fp uintptr, ptr uintptr, osize uint64, nsize uint64) uintptr {
-	p := ((*((*LuaAlloc)(unsafe.Pointer(fp))))(unsafe.Pointer(ptr), osize, nsize))
-	return uintptr(p)
-}
+// TODO: Figure out when to C.malloc, and when to pass Go ptr
+// Answer: If C frees some memory, then it's to be C.malloc'd, else pass go ptr
+// Basically, some lua functions will manage memory themselves, and in that case
+// we give them a C pointer - else we manage it ourselves. Technically you can give
+// everything a C pointer, but you don't need to!
 
 //
 // ==================
@@ -37,8 +36,14 @@ func go_allocf(fp uintptr, ptr uintptr, osize uint64, nsize uint64) uintptr {
 // ==================
 //
 
-func NewState(ud unsafe.Pointer) *LuaState {
-	return C.clua_newstate(unsafe.Pointer(ud))
+func NewState(f LuaAlloc, ud unsafe.Pointer) *LuaState {
+	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
+	*(*LuaAlloc)(cf) = f
+
+	cud := C.malloc(C.size_t(unsafe.Sizeof(ud)))
+	cud = ud
+
+	return C.clua_newstate(cf, cud)
 }
 
 func LuaClose(L *LuaState) {
@@ -299,10 +304,14 @@ func PushCClosureK(L *LuaState, f LuaCFunction, debugname string, nup int32, con
 	if cont == nil {
 		ccont = C.NULL
 	} else {
+		ccont = C.malloc(C.size_t(unsafe.Sizeof(cont)))
 		ccont = unsafe.Pointer(&cont)
 	}
 
-	C.clua_pushcclosurek(L, unsafe.Pointer(&f), cdebugname, C.int(nup), ccont)
+	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
+	*(*LuaCFunction)(cf) = f
+
+	C.clua_pushcclosurek(L, cf, cdebugname, C.int(nup), ccont)
 }
 
 // TODO: Rest of it

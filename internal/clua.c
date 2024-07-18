@@ -2,14 +2,15 @@
 #include <lua.h>
 #include <_cgo_export.h>
 
-void* clua_alloc(void* ud, void *ptr, size_t osize, size_t nsize)
-{
-	return (void*) go_allocf((GoUintptr) ud,(GoUintptr) ptr, osize, nsize);
-}
+// void* clua_alloc(void* ud, void *ptr, size_t osize, size_t nsize)
+// {
+// 	return (void*) go_allocf((GoUintptr) ud,(GoUintptr) ptr, osize, nsize);
+// }
 
-lua_State* clua_newstate(void* goallocf)
+
+lua_State* clua_newstate(void* f, void* ud)
 {
-	return lua_newstate(&clua_alloc, goallocf);
+	return lua_newstate((lua_Alloc)f, ud);
 }
 
 l_noret cluaL_errorL(lua_State* L, char* msg)
@@ -18,5 +19,5 @@ l_noret cluaL_errorL(lua_State* L, char* msg)
 }
 
 void clua_pushcclosurek(lua_State* L, void* f, char* debugname, int nup, void* cont) {
-	return lua_pushcclosurek(L, f, debugname, nup, cont);
+	return lua_pushcclosurek(L, (lua_CFunction)f, debugname, nup, (lua_Continuation)cont);
 }
