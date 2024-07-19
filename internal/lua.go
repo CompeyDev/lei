@@ -660,5 +660,24 @@ func GetAllocF(L *LuaState, ud *unsafe.Pointer) LuaAlloc {
 	return *(*LuaAlloc)(unsafe.Pointer(C.lua_getallocf(L, ud)))
 }
 
+//
+// ==========================
+//      Reference System
+// ==========================
+//
+
+const (
+	LUA_NOREF = iota - 1
+	LUA_REFNIL
+)
+
+func Ref(L *LuaState, idx int32) int32 {
+	return int32(C.lua_ref(L, C.int(idx)))
+}
+
+func Unref(L *LuaState, ref int32) {
+	C.lua_unref(L, C.int(ref))
+}
+
 // TODO: Free udtor's after func
 // TODO: Rest of it
