@@ -29,3 +29,7 @@ void* clua_newuserdatadtor(lua_State* L, size_t sz, void* dtor) {
 void clua_setuserdatadtor(lua_State* L, int tag, void* dtor) {
 	return lua_setuserdatadtor(L, tag, (lua_Destructor)dtor);
 }
+
+void clua_getcoverage(lua_State* L, int funcindex, void* context, void* callback) {
+	return lua_getcoverage(L, funcindex, context, (lua_Coverage)callback);
+}

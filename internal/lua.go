@@ -9,7 +9,11 @@ package internal
 #include "clua.h"
 */
 import "C"
-import "unsafe"
+import (
+	"errors"
+	"strconv"
+	"unsafe"
+)
 
 const (
 	LUA_OK = iota + 1
@@ -679,5 +683,128 @@ func Unref(L *LuaState, ref int32) {
 	C.lua_unref(L, C.int(ref))
 }
 
-// TODO: Free udtor's after func
-// TODO: Rest of it
+//
+// ==================
+//     Debug API
+// ==================
+//
+
+const LUA_IDSIZE = 256
+
+type LuaDebug struct {
+	Name        string
+	What        string
+	Source      string
+	ShortSrc    string
+	LineDefined int8
+	CurrentLine int8
+	NUpVals     uint8
+	NParams     uint8
+	IsVarArg    int8
+	Userdata    unsafe.Pointer
+	SSbuf       string // size = LUA_IDSIZE
+}
+type LuaHook = func(L *LuaState, ar *LuaDebug)
+type LuaCoverage = func(
+	context unsafe.Pointer,
+	function string,
+	linedefined int32,
+	depth int32,
+	hits *int32,
+	size uint64,
+)
+
+func StackDepth(L *LuaState) int32 {
+	return int32(C.lua_stackdepth(L))
+}
+
+// Errors if invalid LuaDebug provided, returns -1
+func GetInfo(L *LuaState, level int32, what string, ar *LuaDebug) (int32, error) {
+	cwhat := C.CString(what)
+	defer C.free(unsafe.Pointer(cwhat))
+
+	car := C.malloc(C.size_t(unsafe.Sizeof(*ar)))
+	defer C.free(car)
+	cname := C.CString(ar.Name)
+	defer C.free(unsafe.Pointer(cname))
+	carwhat := C.CString(ar.What)
+	defer C.free(unsafe.Pointer(carwhat))
+	csource := C.CString(ar.Source)
+	defer C.free(unsafe.Pointer(csource))
+	cshortsrc := C.CString(ar.ShortSrc)
+	defer C.free(unsafe.Pointer(cshortsrc))
+	if len(ar.SSbuf)+1 != LUA_IDSIZE { // contains null delimeter, so LUA_IDSIZE is one greater than the string len
+		return -1, errors.New("lua.GetInfo: SSbuf must be exactly " + strconv.Itoa(LUA_IDSIZE) + " bytes long")
+	}
+	cssbuf := C.CString(ar.SSbuf)
+	defer C.free(unsafe.Pointer(cssbuf))
+
+	*(**C.lua_Debug)(car) = &C.lua_Debug{
+		name:        cname,
+		what:        carwhat,
+		source:      csource,
+		short_src:   cshortsrc,
+		linedefined: C.int(ar.LineDefined),
+		currentline: C.int(ar.CurrentLine),
+		nupvals:     C.uchar(ar.NUpVals),
+		nparams:     C.uchar(ar.NParams),
+		isvararg:    C.char(ar.IsVarArg),
+		userdata:    ar.Userdata,
+		ssbuf:       *(*[LUA_IDSIZE]C.char)(unsafe.Pointer(cssbuf)),
+	}
+
+	return int32(C.lua_getinfo(L, C.int(level), cwhat, (*C.lua_Debug)(car))), nil
+}
+
+func GetArgument(L *LuaState, level int32, n int32) int32 {
+	return int32(C.lua_getargument(L, C.int(level), C.int(n)))
+}
+
+func GetLocal(L *LuaState, level int32, n int32) string {
+	return C.GoString(C.lua_getlocal(L, C.int(level), C.int(n)))
+}
+
+func SetLocal(L *LuaState, level int32, n int32) string {
+	return C.GoString(C.lua_setlocal(L, C.int(level), C.int(n)))
+}
+
+func GetUpvalue(L *LuaState, funcindex int32, n int32) string {
+	return C.GoString(C.lua_getupvalue(L, C.int(funcindex), C.int(n)))
+}
+
+func SetUpvalue(L *LuaState, funcindex int32, n int32) string {
+	return C.GoString(C.lua_setupvalue(L, C.int(funcindex), C.int(n)))
+}
+
+func SingleStep(L *LuaState, enabled bool) {
+	cenabled := C.int(0)
+	if enabled {
+		cenabled = C.int(1)
+	}
+
+	C.lua_singlestep(L, cenabled)
+}
+
+func Breakpoint(L *LuaState, funcindex int32, line int32, enabled bool) int32 {
+	cenabled := C.int(0)
+	if enabled {
+		cenabled = C.int(1)
+	}
+
+	return int32(C.lua_breakpoint(L, C.int(funcindex), C.int(line), cenabled))
+}
+
+func GetCoverage(L *LuaState, funcindex int32, context unsafe.Pointer, callback LuaCoverage) {
+	ccallback := C.malloc(C.size_t(unsafe.Sizeof(callback)))
+	defer C.free(ccallback)
+	*(*LuaCoverage)(ccallback) = callback
+
+	C.clua_getcoverage(L, C.int(funcindex), context, ccallback)
+}
+
+func DebugTrace(L *LuaState) string {
+	return C.GoString(C.lua_debugtrace(L))
+}
+
+// TODO: Implement "useful macros" section as Go functions
+// TODO: lua_Callbacks and related stuff
