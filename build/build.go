@@ -76,8 +76,11 @@ func main() {
 		buildTags = append(buildTags, []string{"-tags", strings.Join(features, ",")}...)
 	}
 
+	subcommand := goArgs[0]
+	goArgs = goArgs[1:]
+	combinedArgs := append(buildTags, goArgs...)
 	cmd, _, _, _ := Command("go").
-		WithArgs(append(buildTags, goArgs...)...).
+		WithArgs(append([]string{subcommand}, combinedArgs...)...).
 		WithVar(
 			"CGO_LDFLAGS",
 			fmt.Sprintf("-L %s -lLuau.VM -lm -lstdc++", artifactDir),
