@@ -25,3 +25,7 @@ void clua_pushcclosurek(lua_State* L, void* f, char* debugname, int nup, void* c
 void* clua_newuserdatadtor(lua_State* L, size_t sz, void* dtor) {
 	return lua_newuserdatadtor(L, sz, (void (*)(void*))dtor);
 }
+
+void clua_setuserdatadtor(lua_State* L, int tag, void* dtor) {
+	return lua_setuserdatadtor(L, tag, (lua_Destructor)dtor);
+}

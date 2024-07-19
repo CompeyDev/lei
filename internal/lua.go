@@ -65,12 +65,6 @@ type LuaDestructor = func(L *LuaState, _ unsafe.Pointer)
 
 type LuaAlloc = func(ud, ptr unsafe.Pointer, osize, nsize C.size_t) *C.void
 
-// TODO: Figure out when to C.malloc, and when to pass Go ptr
-// Answer: If C frees some memory, then it's to be C.malloc'd, else pass go ptr
-// Basically, some lua functions will manage memory themselves, and in that case
-// we give them a C pointer - else we manage it ourselves. Technically you can give
-// everything a C pointer, but you don't need to!
-
 //
 // ==================
 // 	    VM state
@@ -79,9 +73,11 @@ type LuaAlloc = func(ud, ptr unsafe.Pointer, osize, nsize C.size_t) *C.void
 
 func NewState(f LuaAlloc, ud unsafe.Pointer) *LuaState {
 	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
+	defer C.free(cf)
 	*(*LuaAlloc)(cf) = f
 
 	cud := C.malloc(C.size_t(unsafe.Sizeof(ud)))
+	defer C.free(cud)
 	cud = ud
 
 	return C.clua_newstate(cf, cud)
@@ -343,15 +339,16 @@ func PushCClosureK(L *LuaState, f LuaCFunction, debugname string, nup int32, con
 	cdebugname := C.CString(debugname)
 	defer C.free(unsafe.Pointer(cdebugname))
 
-	var ccont unsafe.Pointer
+	ccont := C.malloc(C.size_t(unsafe.Sizeof(cont)))
+	defer C.free(ccont)
 	if cont == nil {
 		ccont = C.NULL
 	} else {
-		ccont = C.malloc(C.size_t(unsafe.Sizeof(cont)))
-		ccont = unsafe.Pointer(&cont)
+		*(*LuaContinuation)(ccont) = cont
 	}
 
 	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
+	defer C.free(cf)
 	*(*LuaCFunction)(cf) = f
 
 	C.clua_pushcclosurek(L, cf, cdebugname, C.int(nup), ccont)
@@ -380,6 +377,7 @@ func NewUserdataTagged(L *LuaState, sz uint64, tag int32) unsafe.Pointer {
 
 func NewUserdataDtor(L *LuaState, sz uint64, dtor LuaUDestructor) unsafe.Pointer {
 	cdtor := C.malloc(C.size_t(unsafe.Sizeof(dtor)))
+	defer C.free(cdtor)
 	*(*LuaUDestructor)(cdtor) = dtor
 
 	return C.clua_newuserdatadtor(L, C.size_t(sz), cdtor)
@@ -390,9 +388,9 @@ func NewBuffer(L *LuaState, sz uint64) unsafe.Pointer {
 }
 
 //
-// ===================
-// 	  Get Functions
-// ===================
+// =====================
+// 	   Get Functions
+// =====================
 //
 
 func GetTable(L *LuaState, idx int32) int32 {
@@ -584,4 +582,83 @@ func TotalBytes(L *LuaState, category int32) uint64 {
 	return uint64(C.lua_totalbytes(L, C.int(category)))
 }
 
+//
+// ================================
+//     Miscellaneous Functions
+// ================================
+//
+
+func Error(L *LuaState) {
+	C.lua_error(L)
+}
+
+func Next(L *LuaState, idx int32) int32 {
+	return int32(C.lua_next(L, C.int(idx)))
+}
+
+func RawIter(L *LuaState, idx int32, iter int32) int32 {
+	return int32(C.lua_rawiter(L, C.int(idx), C.int(iter)))
+}
+
+func Concat(L *LuaState, n int32) {
+	C.lua_concat(L, C.int(n))
+}
+
+func Clock() float64 {
+	return float64(C.lua_clock())
+}
+
+func SetUserdataTag(L *LuaState, idx int32, tag int32) {
+	C.lua_setuserdatatag(L, C.int(idx), C.int(tag))
+}
+
+func SetUserdataDtor(L *LuaState, tag int32, dtor LuaDestructor) {
+	cdtor := C.malloc(C.size_t(unsafe.Sizeof(dtor)))
+	defer C.free(cdtor)
+
+	if dtor == nil {
+		cdtor = C.NULL
+	} else {
+		*(*LuaDestructor)(cdtor) = dtor
+	}
+
+	C.clua_setuserdatadtor(L, C.int(tag), cdtor)
+}
+
+func GetUserdataDtor(L *LuaState, tag int32) LuaDestructor {
+	return *(*LuaDestructor)(unsafe.Pointer(C.lua_getuserdatadtor(L, C.int(tag))))
+}
+
+func SetUserdataMetatable(L *LuaState, tag int32, idx int32) {
+	C.lua_setuserdatametatable(L, C.int(tag), C.int(idx))
+}
+
+func GetUserdataMetatable(L *LuaState, tag int32) {
+	C.lua_getuserdatametatable(L, C.int(tag))
+}
+
+func SetLightUserdataName(L *LuaState, tag int32, name string) {
+	cname := C.CString(name)
+	defer C.free(unsafe.Pointer(cname))
+
+	C.lua_setlightuserdataname(L, C.int(tag), cname)
+}
+
+func GetLightUserdataName(L *LuaState, tag int32) string {
+	return C.GoString(C.lua_getlightuserdataname(L, C.int(tag)))
+}
+
+func CloneFunction(L *LuaState, idx int32) {
+	C.lua_clonefunction(L, C.int(idx))
+}
+
+func ClearTable(L *LuaState, idx int32) {
+	C.lua_cleartable(L, C.int(idx))
+}
+
+func GetAllocF(L *LuaState, ud *unsafe.Pointer) LuaAlloc {
+	return *(*LuaAlloc)(unsafe.Pointer(C.lua_getallocf(L, ud)))
+}
+
+// TODO: Free udtor's after func
 // TODO: Rest of it
