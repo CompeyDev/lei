@@ -773,13 +773,7 @@ func StackDepth(L *LuaState) int32 {
 	return int32(C.lua_stackdepth(L))
 }
 
-// Errors if invalid LuaDebug provided, returns -1
-func GetInfo(L *LuaState, level int32, what string, ar *LuaDebug) (int32, error) {
-	cwhat := C.CString(what)
-	defer C.free(unsafe.Pointer(cwhat))
-
-	car := C.malloc(C.size_t(unsafe.Sizeof(*ar)))
-	defer C.free(car)
+func (ar *LuaDebug) toCLuaDebug() (*C.lua_Debug, error) {
 	cname := C.CString(ar.Name)
 	defer C.free(unsafe.Pointer(cname))
 	carwhat := C.CString(ar.What)
@@ -789,12 +783,12 @@ func GetInfo(L *LuaState, level int32, what string, ar *LuaDebug) (int32, error)
 	cshortsrc := C.CString(ar.ShortSrc)
 	defer C.free(unsafe.Pointer(cshortsrc))
 	if len(ar.SSbuf)+1 != LUA_IDSIZE { // contains null delimeter, so LUA_IDSIZE is one greater than the string len
-		return -1, errors.New("lua.GetInfo: SSbuf must be exactly " + strconv.Itoa(LUA_IDSIZE) + " bytes long")
+		return nil, errors.New("lua.GetInfo: SSbuf must be exactly " + strconv.Itoa(LUA_IDSIZE) + " bytes long")
 	}
 	cssbuf := C.CString(ar.SSbuf)
 	defer C.free(unsafe.Pointer(cssbuf))
 
-	*(**C.lua_Debug)(car) = &C.lua_Debug{
+	return &C.lua_Debug{
 		name:        cname,
 		what:        carwhat,
 		source:      csource,
@@ -806,9 +800,24 @@ func GetInfo(L *LuaState, level int32, what string, ar *LuaDebug) (int32, error)
 		isvararg:    C.char(ar.IsVarArg),
 		userdata:    ar.Userdata,
 		ssbuf:       *(*[LUA_IDSIZE]C.char)(unsafe.Pointer(cssbuf)),
+	}, nil
+}
+
+// Errors if invalid LuaDebug provided, returns -1
+func GetInfo(L *LuaState, level int32, what string, ar *LuaDebug) (int32, error) {
+	cwhat := C.CString(what)
+	defer C.free(unsafe.Pointer(cwhat))
+
+	car, err := ar.toCLuaDebug()
+	if err != nil {
+		return -1, err
 	}
 
-	return int32(C.lua_getinfo(L, C.int(level), cwhat, (*C.lua_Debug)(car))), nil
+	carp := C.malloc(C.size_t(unsafe.Sizeof(*ar)))
+	defer C.free(carp)
+	*(**C.lua_Debug)(carp) = car
+
+	return int32(C.lua_getinfo(L, C.int(level), cwhat, (*C.lua_Debug)(carp))), nil
 }
 
 func GetArgument(L *LuaState, level int32, n int32) int32 {
@@ -859,6 +868,35 @@ func GetCoverage(L *LuaState, funcindex int32, context unsafe.Pointer, callback 
 
 func DebugTrace(L *LuaState) string {
 	return C.GoString(C.lua_debugtrace(L))
+}
+
+type LuaCallbacks struct {
+	Userdata            unsafe.Pointer
+	Interrupt           func(L *LuaState, gc int32)
+	Panic               func(L *LuaState, errcode int32)
+	UserThread          func(LP *LuaState, L *LuaState)
+	UserAtom            func(s string, l uint64)
+	DebugBreak          func(L *LuaState, ar *LuaDebug)
+	DebugStep           func(L *LuaState, ar *LuaDebug)
+	DebugInterrupt      func(L *LuaState, ar *LuaDebug)
+	DebugProtectedError func(L *LuaState)
+}
+
+func Callbacks(L *LuaState) *LuaCallbacks {
+	ccallbacks := C.lua_callbacks(L)
+
+	// sorry
+	return &LuaCallbacks{
+		Userdata:            ccallbacks.userdata,
+		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(ccallbacks.interrupt)),
+		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(ccallbacks.panic)),
+		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(ccallbacks.userthread)),
+		UserAtom:            *(*func(s string, l uint64))(unsafe.Pointer(ccallbacks.useratom)),
+		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugbreak)),
+		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
+		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
+		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(ccallbacks.debugstep)),
+	}
 }
 
 func ToNumber(L *LuaState, i int32) LuaNumber {
@@ -960,5 +998,3 @@ func GetGlobal(L *LuaState, global string) int32 {
 func ToString(L *LuaState, i int32) string {
 	return ToLString(L, i, new(uint64))
 }
-
-// TODO: lua_Callbacks and related stuff
