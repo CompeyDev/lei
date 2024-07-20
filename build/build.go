@@ -34,6 +34,9 @@ func buildVm(artifactPath string, cmakeFlags ...string) {
 	Exec("cmake", buildDir, append(defaultCmakeFlags, cmakeFlags...)...)
 	Exec("cmake", buildDir, "--build", ".", "--target Luau.VM", "--config", "RelWithDebInfo")
 
+	// TODO: Write status file including version & build type (vector3 or vector4)
+	//       If current build type and version differ, then rebuild from scratch and
+	//       replace
 	// Copy the artifact to the artifact directory
 	artifactFile, artifactErr := os.ReadFile(path.Join(buildDir, ARTIFACT_NAME))
 	bail(artifactErr)
