@@ -15,6 +15,38 @@ import (
 	"unsafe"
 )
 
+//
+// ===========================
+//     luaconf.h Constants
+// ===========================
+//
+
+const (
+	LUAI_MAXCSTACK  = 1000000 // Max allowed values in lua stack
+	LUA_UTAG_LIMIT  = 128     // Max number of lua userdata tags
+	LUA_LUTAG_LIMIT = 128     // Max number of light lua userdata tags
+)
+
+const LUA_MULTRET = -1
+
+//
+// ====================
+//    Pseudo Indices
+// ====================
+//
+
+const (
+	LUA_REGISTRYINDEX = -LUAI_MAXCSTACK - 2000
+	LUA_ENVIRONINDEX  = -LUAI_MAXCSTACK - 2001
+	LUA_GLOBALSINDEX  = -LUAI_MAXCSTACK - 2002
+)
+
+//
+// ======================
+//     Thread Status
+// ======================
+//
+
 const (
 	LUA_OK = iota + 1
 	LUA_YIELD
@@ -25,6 +57,12 @@ const (
 	LUA_BREAK
 )
 
+//
+// =========================
+//     Coroutine Status
+// =========================
+//
+
 const (
 	LUA_CORUN = iota + 1
 	LUA_COSUS
@@ -33,6 +71,13 @@ const (
 	LUA_COERR
 )
 
+//
+// ===================
+//     Basic Types
+// ===================
+//
+
+const LUA_TNONE = -1
 const (
 	LUA_TNIL = iota
 	LUA_TBOOLEAN
@@ -46,7 +91,7 @@ const (
 	LUA_TTABLE
 	LUA_TFUNCTION
 	LUA_TUSERDATA
-	LUA_THREAD
+	LUA_TTHREAD
 	LUA_TBUFFER
 
 	LUA_TPROTO
@@ -183,8 +228,8 @@ func IsUserData(L *LuaState, idx int32) bool {
 	return C.lua_isuserdata(L, C.int(idx)) != 0
 }
 
-func Type(L *LuaState, idx int32) bool {
-	return C.lua_type(L, C.int(idx)) != 0
+func Type(L *LuaState, idx int32) int32 {
+	return int32(C.lua_type(L, C.int(idx)))
 }
 
 func TypeName(L *LuaState, tp int32) string {
@@ -334,7 +379,8 @@ func PushLString(L *LuaState, s string, l uint64) {
 	cs := C.CString(s)
 	defer C.free(unsafe.Pointer(cs))
 
-	C.lua_pushlstring(L, cs, C.size_t(l))
+	// NOTE: CStrings are null-terminated, and hence one longer than Go strings
+	C.lua_pushlstring(L, cs, C.size_t(l+1))
 }
 
 func PushString(L *LuaState, s string) {
@@ -815,5 +861,104 @@ func DebugTrace(L *LuaState) string {
 	return C.GoString(C.lua_debugtrace(L))
 }
 
-// TODO: Implement "useful macros" section as Go functions
+func ToNumber(L *LuaState, i int32) LuaNumber {
+	return ToNumberX(L, i, new(bool))
+}
+
+func ToInteger(L *LuaState, i int32) LuaInteger {
+	return ToIntegerX(L, i, new(bool))
+}
+
+func ToUnsigned(L *LuaState, i int32) LuaUnsigned {
+	return ToUnsignedX(L, i, new(bool))
+}
+
+func Pop(L *LuaState, n int32) {
+	SetTop(L, -n-1)
+}
+
+func NewTable(L *LuaState) {
+	CreateTable(L, 0, 0)
+}
+
+func NewUserdata(L *LuaState, sz uint64) unsafe.Pointer {
+	return NewUserdataTagged(L, sz, 0)
+}
+
+func IsFunction(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TFUNCTION
+}
+
+func IsTable(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TTABLE
+}
+
+func IsLightUserdata(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TLIGHTUSERDATA
+}
+
+func IsNil(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TNIL
+}
+
+func IsBoolean(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TBOOLEAN
+}
+
+func IsVector(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TVECTOR
+}
+
+func IsThread(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TTHREAD
+}
+
+func IsBuffer(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TBUFFER
+}
+
+func IsNone(L *LuaState, n int32) bool {
+	return Type(L, n) == LUA_TNONE
+}
+
+func IsNoneOrNil(L *LuaState, n int32) bool {
+	return Type(L, n) <= LUA_TNIL
+}
+
+func PushLiteral(L *LuaState, s string) {
+	PushLString(L, s, uint64(len(s)))
+}
+
+func PushCFunction(L *LuaState, f LuaCFunction) {
+	PushCClosureK(L, f, *new(string), 0, nil)
+}
+
+func PushCFunctionD(L *LuaState, f LuaCFunction, debugname string) {
+	PushCClosureK(L, f, debugname, 0, nil)
+}
+
+func PushCClosure(L *LuaState, f LuaCFunction, nup int32) {
+	PushCClosureK(L, f, *new(string), nup, nil)
+}
+
+func PushCClosureD(L *LuaState, f LuaCFunction, debugname string, nup int32) {
+	PushCClosureK(L, f, debugname, nup, nil)
+}
+
+func PushLightUserdata(L *LuaState, p unsafe.Pointer) {
+	PushLightUserdataTagged(L, p, 0)
+}
+
+func SetGlobal(L *LuaState, global string) {
+	SetField(L, LUA_GLOBALSINDEX, global)
+}
+
+func GetGlobal(L *LuaState, global string) int32 {
+	return GetField(L, LUA_GLOBALSINDEX, global)
+}
+
+func ToString(L *LuaState, i int32) string {
+	return ToLString(L, i, new(uint64))
+}
+
 // TODO: lua_Callbacks and related stuff
