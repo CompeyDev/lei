@@ -203,31 +203,40 @@ func LessThan(L *LuaState, idx1, idx2 int32) bool {
 	return C.lua_lessthan(L, C.int(idx1), C.int(idx2)) != 0
 }
 
-func ToNumberX(L *LuaState, idx int32, isnum bool) LuaNumber {
-	isnumInner := C.int(0)
-	if isnum {
-		isnumInner = C.int(1)
+func ToNumberX(L *LuaState, idx int32, isnum *bool) LuaNumber {
+	cisnumber := C.int(0)
+	if *isnum {
+		cisnumber = C.int(1)
 	}
 
-	return LuaNumber(C.lua_tonumberx(L, C.int(idx), &isnumInner))
+	num := LuaNumber(C.lua_tonumberx(L, C.int(idx), &cisnumber))
+	*isnum = cisnumber != C.int(0)
+
+	return num
 }
 
-func ToIntegerX(L *LuaState, idx int32, isnum bool) LuaInteger {
-	isnumInner := C.int(0)
-	if isnum {
-		isnumInner = C.int(1)
+func ToIntegerX(L *LuaState, idx int32, isnum *bool) LuaInteger {
+	cisnumber := C.int(0)
+	if *isnum {
+		cisnumber = C.int(1)
 	}
 
-	return LuaInteger(C.lua_tointegerx(L, C.int(idx), &isnumInner))
+	integer := LuaInteger(C.lua_tointegerx(L, C.int(idx), &cisnumber))
+	*isnum = cisnumber != C.int(0)
+
+	return integer
 }
 
-func ToUnsignedX(L *LuaState, idx int32, isnum bool) LuaUnsigned {
-	isnumInner := C.int(0)
-	if isnum {
-		isnumInner = C.int(1)
+func ToUnsignedX(L *LuaState, idx int32, isnum *bool) LuaUnsigned {
+	cisnumber := C.int(0)
+	if *isnum {
+		cisnumber = C.int(1)
 	}
 
-	return LuaUnsigned(C.lua_tounsignedx(L, C.int(idx), &isnumInner))
+	unsigned := LuaUnsigned(C.lua_tounsignedx(L, C.int(idx), &cisnumber))
+	*isnum = cisnumber != C.int(0)
+
+	return unsigned
 }
 
 func ToVector(L *LuaState, idx int32) {
