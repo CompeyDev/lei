@@ -234,4 +234,60 @@ func LOptString(L *LuaState, n int32, d string) string {
 	return LOptLString(L, n, d, nil)
 }
 
+const (
+	LUA_COLIBNAME     = "coroutine"
+	LUA_TABLIBNAME    = "table"
+	LUA_OSLIBNAME     = "os"
+	LUA_STRLIBNAME    = "string"
+	LUA_BITLIBNAME    = "bit32"
+	LUA_BUFFERLIBNAME = "buffer"
+	LUA_UTF8LIBNAME   = "utf8"
+	LUA_MATHLIBNAME   = "math"
+	LUA_DBLIBNAME     = "debug"
+)
+
+func OpenBase(L *LuaState) int32 {
+	return int32(C.luaopen_base(L))
+}
+
+func OpenCoroutine(L *LuaState) int32 {
+	return int32(C.luaopen_coroutine(L))
+}
+
+func OpenTable(L *LuaState) int32 {
+	return int32(C.luaopen_table(L))
+}
+
+func OpenOS(L *LuaState) int32 {
+	return int32(C.luaopen_os(L))
+}
+
+func OpenString(L *LuaState) int32 {
+	return int32(C.luaopen_string(L))
+}
+
+func OpenBit32(L *LuaState) int32 {
+	return int32(C.luaopen_bit32(L))
+}
+
+func OpenBuffer(L *LuaState) int32 {
+	return int32(C.luaopen_buffer(L))
+}
+
+func OpenUtf8(L *LuaState) int32 {
+	return int32(C.luaopen_utf8(L))
+}
+
+func OpenMath(L *LuaState) int32 {
+	return int32(C.luaopen_math(L))
+}
+
+func OpenDebug(L *LuaState) int32 {
+	return int32(C.luaopen_debug(L))
+}
+
+func OpenLibs(L *LuaState) {
+	C.luaL_openlibs(L)
+}
+
 // TODO: More utility functions, buffer bindings
