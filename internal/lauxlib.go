@@ -172,6 +172,7 @@ func LErrorL(L *LuaState, msg string) {
 	defer C.free(unsafe.Pointer(cmsg))
 
 	C.cluaL_errorL(L, cmsg)
+	panic(msg)
 }
 
 func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {

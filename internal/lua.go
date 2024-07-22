@@ -22,9 +22,9 @@ import (
 //
 
 const (
-	LUAI_MAXCSTACK  = 1000000 // Max allowed values in lua stack
-	LUA_UTAG_LIMIT  = 128     // Max number of lua userdata tags
-	LUA_LUTAG_LIMIT = 128     // Max number of light lua userdata tags
+	LUAI_MAXCSTACK  = 8000 // Max allowed values in lua stack
+	LUA_UTAG_LIMIT  = 128  // Max number of lua userdata tags
+	LUA_LUTAG_LIMIT = 128  // Max number of light lua userdata tags
 )
 
 const LUA_MULTRET = -1
@@ -504,6 +504,10 @@ func SetSafeEnv(L *LuaState, idx int32, enabled bool) {
 	C.lua_setsafeenv(L, C.int(idx), cenabled)
 }
 
+func GetMetatable(L *LuaState, objindex int32) int32 {
+	return int32(C.lua_getmetatable(L, C.int(objindex)))
+}
+
 func Getfenv(L *LuaState, idx int32) {
 	C.lua_getfenv(L, C.int(idx))
 }
@@ -523,6 +527,10 @@ func SetField(L *LuaState, idx int32, k string) {
 	defer C.free(unsafe.Pointer(ck))
 
 	C.lua_setfield(L, C.int(idx), ck)
+}
+
+func RawSet(L *LuaState, idx int32) {
+	C.lua_rawset(L, C.int(idx))
 }
 
 func RawSetI(L *LuaState, idx int32, n int32) {
@@ -553,11 +561,11 @@ func LuauLoad(L *LuaState, chunkname string, data string, size uint64, env int32
 	return int32(C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)))
 }
 
-func LuaCall(L *LuaState, nargs int32, nresults int32) {
+func Call(L *LuaState, nargs int32, nresults int32) {
 	C.lua_call(L, C.int(nargs), C.int(nresults))
 }
 
-func LuaPcall(L *LuaState, nargs int32, nresults int32, errfunc int32) int32 {
+func Pcall(L *LuaState, nargs int32, nresults int32, errfunc int32) int32 {
 	return int32(C.lua_pcall(L, C.int(nargs), C.int(nresults), C.int(errfunc)))
 }
 
