@@ -1,4 +1,4 @@
-package internal
+package ffi
 
 /*
 #cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
@@ -697,7 +697,7 @@ func GetUserdataDtor(L *LuaState, tag int32) LuaDestructor {
 }
 
 func SetUserdataMetatable(L *LuaState, tag int32, idx int32) {
-	C.lua_setuserdatametatable(L, C.int(tag), C.int(idx))
+	C.lua_setuserdatametatable(L, C.int(idx))
 }
 
 func GetUserdataMetatable(L *LuaState, tag int32) {

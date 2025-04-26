@@ -1,4 +1,4 @@
-package internal
+package ffi
 
 //#include <stdlib.h>
 import "C"
