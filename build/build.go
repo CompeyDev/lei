@@ -39,7 +39,7 @@ func buildVm(srcPath string, artifactPath string, includesDir string, cmakeFlags
 	// Build the Luau VM using CMake
 	buildDir := path.Join(srcPath, "cmake")
 	buildDirErr := os.Mkdir(buildDir, os.ModePerm)
-	if buildDirErr != nil && !os.IsExist(buildDirErr) {
+	if !os.IsExist(buildDirErr) {
 		bail(buildDirErr)
 	}
 
