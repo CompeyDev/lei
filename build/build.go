@@ -39,7 +39,7 @@ func buildVm(artifactPath string, cmakeFlags ...string) {
 	buildDir := path.Join(dir, "cmake")
 	bail(os.Mkdir(buildDir, os.ModePerm))
 
-	defaultCmakeFlags := []string{"..", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", "-DLUAU_EXTERN_C=ON"}
+	defaultCmakeFlags := []string{"..", "-DCMAKE_BUILD_TYPE=RelWithDebInfo", "-DLUAU_EXTERN_C=ON", "-DCMAKE_POLICY_VERSION_MINIMUM=3.5"}
 	Exec("cmake", buildDir, append(defaultCmakeFlags, cmakeFlags...)...)
 	Exec("cmake", buildDir, "--build", ".", "--target Luau.VM", "--config", "RelWithDebInfo")
 
@@ -79,7 +79,9 @@ func main() {
 	}
 
 	lockfileContents, err := os.ReadFile(lockfilePath)
-	bail(err)
+	if !os.IsNotExist(err) {
+		bail(err)
+	}
 
 	serFeatures := fmt.Sprintf("%v", features)
 	toCleanBuild := string(lockfileContents) != serFeatures
