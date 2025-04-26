@@ -893,19 +893,20 @@ type LuaCallbacks struct {
 func Callbacks(L *LuaState) *LuaCallbacks {
 	ccallbacks := C.lua_callbacks(L)
 
-	// sorry
 	return &LuaCallbacks{
 		Userdata:            ccallbacks.userdata,
 		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(ccallbacks.interrupt)),
 		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(ccallbacks.panic)),
 		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(ccallbacks.userthread)),
-		UserAtom:            *(*func(s string, l uint64))(unsafe.Pointer(ccallbacks.useratom)),
+		UserAtom:            *(*func(s string, l uint64) int16)(unsafe.Pointer(ccallbacks.useratom)),
 		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugbreak)),
 		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
-		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
-		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(ccallbacks.debugstep)),
+		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debuginterrupt)),
+		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(ccallbacks.debugprotectederror)),
+		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(ccallbacks.onallocate)),
 	}
 }
+
 
 func ToNumber(L *LuaState, i int32) LuaNumber {
 	return ToNumberX(L, i, new(bool))
