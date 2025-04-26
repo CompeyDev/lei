@@ -171,8 +171,10 @@ func LErrorL(L *LuaState, msg string) {
 	cmsg := C.CString(msg)
 	defer C.free(unsafe.Pointer(cmsg))
 
-	C.cluaL_errorL(L, cmsg)
-	panic(msg)
+	PushString(L, msg)
+	Error(L)
+
+	// TODO: do we panic on the go side?
 }
 
 func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {

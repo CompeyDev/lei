@@ -13,11 +13,6 @@ lua_State* clua_newstate(void* f, void* ud)
 	return lua_newstate((lua_Alloc)f, ud);
 }
 
-l_noret cluaL_errorL(lua_State* L, char* msg)
-{
-	luaL_errorL(L, msg);
-}
-
 void clua_pushcclosurek(lua_State* L, void* f, char* debugname, int nup, void* cont) {
 	return lua_pushcclosurek(L, (lua_CFunction)f, debugname, nup, (lua_Continuation)cont);
 }
