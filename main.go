@@ -1,6 +1,6 @@
 package main
 
-import lualib "github.com/CompeyDev/lei/internal"
+import lualib "github.com/CompeyDev/lei/ffi"
 
 func main() {
 	lua := lualib.LNewState()
