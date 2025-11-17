@@ -2,22 +2,22 @@ package ffi
 
 /*
 #cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
-// #cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM -lm -lstdc++
+#cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
 #include "clua.h"
 
 // From https://golang-nuts.narkive.com/UsNENgyt/cgo-how-to-pass-string-to-char-array
-static char** makeCharArray(int size) {
+static char** make_char_array(int size) {
 	return calloc(sizeof(char*), size);
 }
 
-static void setArrayString(char** a, char* s, int n) {
+static void set_array_string(char** a, char* s, int n) {
 	a[n] = s;
 }
 
-static void freeCharArray(char** a, int size) {
+static void free_char_array(char** a, int size) {
 	int i;
 	for (i = 0; i < size; i++)
 	free(a[i]);
@@ -181,10 +181,10 @@ func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {
 	cdef := C.CString(def)
 	defer C.free(unsafe.Pointer(cdef))
 
-	clst := C.makeCharArray(C.int(len(lst)))
-	defer C.freeCharArray(clst, C.int(len(lst)))
+	clst := C.make_char_array(C.int(len(lst)))
+	defer C.free_char_array(clst, C.int(len(lst)))
 	for i, s := range lst {
-		C.setArrayString(clst, C.CString(s), C.int(i))
+		C.set_array_string(clst, C.CString(s), C.int(i))
 	}
 
 	return int32(C.luaL_checkoption(L, C.int(narg), cdef, clst))
@@ -249,48 +249,20 @@ const (
 	LUA_DBLIBNAME     = "debug"
 )
 
-func OpenBase(L *LuaState) int32 {
-	return int32(C.luaopen_base(L))
-}
+// DIVERGENCE: We cannot export wrapper functions around C functions if we want to
+// pass them to API functions, we preserve the real C pointer by having 'opener'
+// functions
 
-func OpenCoroutine(L *LuaState) int32 {
-	return int32(C.luaopen_coroutine(L))
-}
-
-func OpenTable(L *LuaState) int32 {
-	return int32(C.luaopen_table(L))
-}
-
-func OpenOS(L *LuaState) int32 {
-	return int32(C.luaopen_os(L))
-}
-
-func OpenString(L *LuaState) int32 {
-	return int32(C.luaopen_string(L))
-}
-
-func OpenBit32(L *LuaState) int32 {
-	return int32(C.luaopen_bit32(L))
-}
-
-func OpenBuffer(L *LuaState) int32 {
-	return int32(C.luaopen_buffer(L))
-}
-
-func OpenUtf8(L *LuaState) int32 {
-	return int32(C.luaopen_utf8(L))
-}
-
-func OpenMath(L *LuaState) int32 {
-	return int32(C.luaopen_math(L))
-}
-
-func OpenDebug(L *LuaState) int32 {
-	return int32(C.luaopen_debug(L))
-}
-
-func OpenLibs(L *LuaState) {
-	C.luaL_openlibs(L)
-}
+func CoroutineOpener() C.lua_CFunction { return C.lua_CFunction(C.luaopen_base) }
+func BaseOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_base) }
+func TableOpener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_table) }
+func OsOpener() C.lua_CFunction        { return C.lua_CFunction(C.luaopen_os) }
+func StringOpener() C.lua_CFunction    { return C.lua_CFunction(C.luaopen_string) }
+func Bit32Opener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_bit32) }
+func BufferOpener() C.lua_CFunction    { return C.lua_CFunction(C.luaopen_buffer) }
+func Utf8Opener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_utf8) }
+func MathOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_math) }
+func DebugOpener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_debug) }
+func LibsOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaL_openlibs) }
 
 // TODO: More utility functions, buffer bindings

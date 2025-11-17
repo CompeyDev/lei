@@ -2,6 +2,7 @@ package ffi
 
 //#include <stdlib.h>
 import "C"
+import "unsafe"
 
 func GetSubtable(L *LuaState, idx int32, fname string) bool {
 	absIdx := AbsIndex(L, idx)
@@ -22,7 +23,7 @@ func GetSubtable(L *LuaState, idx int32, fname string) bool {
 	return false
 }
 
-func RequireLib(L *LuaState, modName string, openF LuaCFunction, isGlobal bool) {
+func RequireLib(L *LuaState, modName string, openF unsafe.Pointer, isGlobal bool) {
 	if !CheckStack(L, 3+20) {
 		LErrorL(L, "stack overflow")
 	}

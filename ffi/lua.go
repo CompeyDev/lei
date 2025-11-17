@@ -1,8 +1,8 @@
 package ffi
 
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
-// #cgo LDFLAGS: -L${SRCDIR}/luau/cmake -lLuau.VM -lm -lstdc++
+#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
+#cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
@@ -120,16 +120,20 @@ type LuaAlloc = func(ud, ptr unsafe.Pointer, osize, nsize C.size_t) *C.void
 // ==================
 //
 
-func NewState(f LuaAlloc, ud unsafe.Pointer) *LuaState {
-	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
-	defer C.free(cf)
-	*(*LuaAlloc)(cf) = f
+func NewState(f unsafe.Pointer, ud unsafe.Pointer) *LuaState {
+	// cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
+	// defer C.free(cf)
+	// *(*LuaAlloc)(cf) = f
 
-	cud := C.malloc(C.size_t(unsafe.Sizeof(ud)))
-	defer C.free(cud)
-	cud = ud
+	// cud := C.malloc(C.size_t(unsafe.Sizeof(ud)))
+	// defer C.free(cud)
+	// cud = ud
 
-	return C.clua_newstate(cf, cud)
+	// ^^^^^^^^^^^^^^^^
+	// we no longer support a go pointer for safety, consumers should instead use
+	// cgo generated trampolines
+
+	return C.clua_newstate(f, ud)
 }
 
 func LuaClose(L *LuaState) {
@@ -394,23 +398,10 @@ func PushString(L *LuaState, s string) {
 // arguments from Go->C isn't something that is possible.
 // func PushFStringL(L *lua_State, fmt string) {}
 
-func PushCClosureK(L *LuaState, f LuaCFunction, debugname string, nup int32, cont LuaContinuation) {
+func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname string, nup int32, cont unsafe.Pointer) {
 	cdebugname := C.CString(debugname)
 	defer C.free(unsafe.Pointer(cdebugname))
-
-	ccont := C.malloc(C.size_t(unsafe.Sizeof(cont)))
-	defer C.free(ccont)
-	if cont == nil {
-		ccont = C.NULL
-	} else {
-		*(*LuaContinuation)(ccont) = cont
-	}
-
-	cf := C.malloc(C.size_t(unsafe.Sizeof(f)))
-	defer C.free(cf)
-	*(*LuaCFunction)(cf) = f
-
-	C.clua_pushcclosurek(L, cf, cdebugname, C.int(nup), ccont)
+	C.clua_pushcclosurek(L, f, cdebugname, C.int(nup), cont)
 }
 
 func PushBoolean(L *LuaState, b bool) {
@@ -434,12 +425,8 @@ func NewUserdataTagged(L *LuaState, sz uint64, tag int32) unsafe.Pointer {
 	return C.lua_newuserdatatagged(L, C.size_t(sz), C.int(tag))
 }
 
-func NewUserdataDtor(L *LuaState, sz uint64, dtor LuaUDestructor) unsafe.Pointer {
-	cdtor := C.malloc(C.size_t(unsafe.Sizeof(dtor)))
-	defer C.free(cdtor)
-	*(*LuaUDestructor)(cdtor) = dtor
-
-	return C.clua_newuserdatadtor(L, C.size_t(sz), cdtor)
+func NewUserdataDtor(L *LuaState, sz uint64, dtor unsafe.Pointer) unsafe.Pointer {
+	return C.clua_newuserdatadtor(L, C.size_t(sz), dtor)
 }
 
 func NewBuffer(L *LuaState, sz uint64) unsafe.Pointer {
@@ -679,17 +666,8 @@ func SetUserdataTag(L *LuaState, idx int32, tag int32) {
 	C.lua_setuserdatatag(L, C.int(idx), C.int(tag))
 }
 
-func SetUserdataDtor(L *LuaState, tag int32, dtor LuaDestructor) {
-	cdtor := C.malloc(C.size_t(unsafe.Sizeof(dtor)))
-	defer C.free(cdtor)
-
-	if dtor == nil {
-		cdtor = C.NULL
-	} else {
-		*(*LuaDestructor)(cdtor) = dtor
-	}
-
-	C.clua_setuserdatadtor(L, C.int(tag), cdtor)
+func SetUserdataDtor(L *LuaState, tag int32, dtor unsafe.Pointer) {
+	C.clua_setuserdatadtor(L, C.int(tag), dtor)
 }
 
 func GetUserdataDtor(L *LuaState, tag int32) LuaDestructor {
@@ -883,11 +861,12 @@ type LuaCallbacks struct {
 	Interrupt           func(L *LuaState, gc int32)
 	Panic               func(L *LuaState, errcode int32)
 	UserThread          func(LP *LuaState, L *LuaState)
-	UserAtom            func(s string, l uint64)
+	UserAtom            func(s string, l uint64) int16
 	DebugBreak          func(L *LuaState, ar *LuaDebug)
 	DebugStep           func(L *LuaState, ar *LuaDebug)
 	DebugInterrupt      func(L *LuaState, ar *LuaDebug)
 	DebugProtectedError func(L *LuaState)
+	OnAllocate          func(L *LuaState, osize uint64, nsize uint64)
 }
 
 func Callbacks(L *LuaState) *LuaCallbacks {
@@ -906,7 +885,6 @@ func Callbacks(L *LuaState) *LuaCallbacks {
 		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(ccallbacks.onallocate)),
 	}
 }
-
 
 func ToNumber(L *LuaState, i int32) LuaNumber {
 	return ToNumberX(L, i, new(bool))
@@ -976,19 +954,19 @@ func PushLiteral(L *LuaState, s string) {
 	PushLString(L, s, uint64(len(s)))
 }
 
-func PushCFunction(L *LuaState, f LuaCFunction) {
+func PushCFunction(L *LuaState, f unsafe.Pointer) {
 	PushCClosureK(L, f, *new(string), 0, nil)
 }
 
-func PushCFunctionD(L *LuaState, f LuaCFunction, debugname string) {
+func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname string) {
 	PushCClosureK(L, f, debugname, 0, nil)
 }
 
-func PushCClosure(L *LuaState, f LuaCFunction, nup int32) {
+func PushCClosure(L *LuaState, f unsafe.Pointer, nup int32) {
 	PushCClosureK(L, f, *new(string), nup, nil)
 }
 
-func PushCClosureD(L *LuaState, f LuaCFunction, debugname string, nup int32) {
+func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname string, nup int32) {
 	PushCClosureK(L, f, debugname, nup, nil)
 }
 
