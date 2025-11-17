@@ -701,8 +701,10 @@ func ClearTable(L *LuaState, idx int32) {
 	C.lua_cleartable(L, C.int(idx))
 }
 
-func GetAllocF(L *LuaState, ud *unsafe.Pointer) LuaAlloc {
-	return *(*LuaAlloc)(unsafe.Pointer(C.lua_getallocf(L, ud)))
+func GetAllocF(L *LuaState, ud *unsafe.Pointer) unsafe.Pointer {
+	// SAFETY: we cannot call this as a Go function, must be treated as an opaque
+	// C pointer with unsafe.Pointer, previously this used to be casted
+	return unsafe.Pointer(C.lua_getallocf(L, ud))
 }
 
 //
