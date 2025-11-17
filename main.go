@@ -1,24 +1,21 @@
 package main
 
-import lualib "github.com/CompeyDev/lei/ffi"
+import (
+	"fmt"
+
+	"github.com/CompeyDev/lei/lua"
+)
 
 func main() {
-	lua := lualib.LNewState()
-	println("Lua VM Address: ", lua)
+	state := lua.New()
+	memState := lua.GetMemoryState(state.RawState())
+	memState.SetMemoryLimit(1) // FIXME: this no workie?
 
-	lualib.PushCFunction(lua, func(L *lualib.LuaState) int32 {
-		println("hi from closure?")
-		return 0
-	})
+	table := state.CreateTable()
+	key, value := state.CreateString("hello"), state.CreateString("world")
+	table.Set(&key, &value)
 
-	lualib.PushString(lua, "123")
-	lualib.PushNumber(lua, lualib.ToNumber(lua, 2))
+	fmt.Printf("Used: %d, Limit: %d\n", memState.UsedMemory(), memState.MemoryLimit())
 
-	if !lualib.IsCFunction(lua, 1) {
-		panic("CFunction was not correctly pushed onto stack")
-	}
-
-	if !lualib.IsNumber(lua, 3) {
-		panic("Number was not correctly pushed onto stack")
-	}
+	fmt.Println(key.ToString(), table.Get(&key).(*lua.LuaString).ToString())
 }
