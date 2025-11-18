@@ -1,15 +1,13 @@
 package lua
 
-import (
-	"github.com/CompeyDev/lei/ffi"
-)
+import "github.com/CompeyDev/lei/ffi"
 
 type LuaValue interface {
-	luaState() *Lua
+	lua() *Lua
 	stackIndex() int
 }
 
 func TypeName(val LuaValue) string {
-	lua := val.luaState()
-	return ffi.TypeName(lua.state, ffi.Type(lua.state, int32(val.stackIndex())))
+	lua := val.lua().state()
+	return ffi.TypeName(lua, ffi.Type(lua, int32(val.stackIndex())))
 }

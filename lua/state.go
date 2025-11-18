@@ -1,47 +1,56 @@
 package lua
 
 import (
+	"runtime"
 	"unsafe"
 
 	"github.com/CompeyDev/lei/ffi"
 )
 
 type LuaOptions struct {
-	collectGarbage bool
-	isSafe         bool
+	InitMemoryState *MemoryState
+	CollectGarbage  bool
+	IsSafe          bool
 }
 
 type Lua struct {
-	state   *ffi.LuaState
-	options LuaOptions
+	inner *StateWithMemory
 }
 
-func (l *Lua) RawState() *ffi.LuaState {
-	return l.state
+func (l *Lua) Memory() *MemoryState {
+	return l.inner.MemState()
 }
 
 func (l *Lua) CreateTable() LuaTable {
-	state := l.state
+	state := l.inner.luaState
 	ffi.NewTable(state)
 
 	return LuaTable{
-		lua:   l,
+		vm:    l,
 		index: int(ffi.GetTop(state)),
 	}
 }
 
 func (l *Lua) CreateString(str string) LuaString {
-	state := l.state
+	state := l.inner.luaState
 
 	ffi.PushString(state, str)
 	index := ffi.GetTop(state)
-	return LuaString{lua: l, index: int(index)}
+	return LuaString{vm: l, index: int(index)}
+}
+
+func (l *Lua) Close() {
+	l.inner.Close()
+}
+
+func (l *Lua) state() *ffi.LuaState {
+	return l.inner.luaState
 }
 
 func New() *Lua {
 	return NewWith(StdLibALLSAFE, LuaOptions{
-		collectGarbage: true,
-		isSafe:         true,
+		CollectGarbage: true,
+		IsSafe:         true,
 	})
 }
 
@@ -50,13 +59,13 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		// TODO: disable c modules for package lib
 	}
 
-	state := newStateWithAllocator()
+	state := newStateWithAllocator(options.InitMemoryState)
 	if state == nil {
 		panic("Failed to create Lua state")
 	}
 
-	ffi.RequireLib(state, "_G", unsafe.Pointer(ffi.BaseOpener()), true)
-	ffi.Pop(state, 1)
+	ffi.RequireLib(state.luaState, "_G", unsafe.Pointer(ffi.BaseOpener()), true)
+	ffi.Pop(state.luaState, 1)
 
 	// TODO: luau jit stuff
 
@@ -83,13 +92,18 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		// FIXME: check safety here maybe?
 
 		if libs.Contains(library.lib) {
-			ffi.RequireLib(state, library.name, unsafe.Pointer(open), true)
+			ffi.RequireLib(state.luaState, library.name, unsafe.Pointer(open), true)
 		}
 	}
 
-	// TODO: set finalizer to collect garbage if collectGarbage = true
-	return &Lua{
-		state:   state,
-		options: options,
-	}
+	lua := &Lua{inner: state}
+	runtime.SetFinalizer(lua, func(l *Lua) {
+		if options.CollectGarbage {
+			ffi.LuaGc(l.state(), ffi.LUA_GCCOLLECT, 0)
+		}
+
+		l.Close()
+	})
+
+	return lua
 }
