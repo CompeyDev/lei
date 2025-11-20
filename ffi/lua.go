@@ -538,12 +538,19 @@ func Setfenv(L *LuaState, idx int32) int32 {
 // =========================
 //
 
-func LuauLoad(L *LuaState, chunkname string, data string, size uint64, env int32) int32 {
+func LuauLoad(L *LuaState, chunkname string, data []byte, size uint64, env int32) int32 {
 	cchunkname := C.CString(chunkname)
 	defer C.free(unsafe.Pointer(cchunkname))
 
-	cdata := C.CString(data)
-	defer C.free(unsafe.Pointer(cdata))
+	var cdata *C.char
+	if size == 0 {
+		// NULL for empty slices
+		cdata = (*C.char)(C.NULL)
+	} else {
+		cdata = (*C.char)(unsafe.Pointer(&data[0]))
+	}
+
+	// NOTE: We don't free the bytecode after it's loaded
 
 	return int32(C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)))
 }
