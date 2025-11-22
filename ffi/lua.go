@@ -48,7 +48,7 @@ const (
 //
 
 const (
-	LUA_OK = iota + 1
+	LUA_OK = iota
 	LUA_YIELD
 	LUA_ERRRUN
 	LUA_ERRSYNTAX
@@ -64,7 +64,7 @@ const (
 //
 
 const (
-	LUA_CORUN = iota + 1
+	LUA_CORUN = iota
 	LUA_COSUS
 	LUA_CONOR
 	LUA_COFIN
