@@ -11,10 +11,80 @@ type LuaOptions struct {
 	InitMemoryState *MemoryState
 	CollectGarbage  bool
 	IsSafe          bool
+	Compiler        *Compiler
 }
 
 type Lua struct {
-	inner *StateWithMemory
+	inner    *StateWithMemory
+	compiler *Compiler
+}
+
+func (l *Lua) Execute(name string, input []byte) ([]any, error) {
+	// TODO: create a load function which doesnt execute
+
+	state := l.inner.luaState
+	initialStack := ffi.GetTop(state) // Track initial stack size
+
+	if !isBytecode(input) {
+		bytecode, err := l.compiler.Compile(string(input))
+		if err != nil {
+			return nil, err
+		}
+
+		input = bytecode
+	}
+
+	loadResult := ffi.LuauLoad(state, name, input, uint64(len(input)), 0)
+	loadErr := newLoadError(state, int(loadResult))
+
+	if loadErr != nil {
+		return nil, loadErr
+	}
+
+	execResult := ffi.Pcall(state, 0, -1, 0)
+	execErr := newLoadError(state, int(execResult))
+
+	if execErr != nil {
+		return nil, execErr
+	}
+
+	stackNow := ffi.GetTop(state)
+	resultsCount := stackNow - initialStack
+
+	if resultsCount == 0 {
+		return nil, nil
+	}
+
+	// TODO: contemplate whether to return LuaValues or go values
+	results := make([]any, resultsCount)
+	for i := range resultsCount {
+		// The stack has grown by the number of returns of the chunk from the
+		// initial value tracked at the beginning. We add one to that due to
+		// Lua's 1-based indexing system
+		stackIndex := int32(initialStack + i + 1)
+		luaType := ffi.Type(state, stackIndex)
+
+		switch luaType {
+		case ffi.LUA_TNIL:
+			results[i] = nil
+		case ffi.LUA_TBOOLEAN:
+			results[i] = ffi.ToBoolean(state, stackIndex)
+		case ffi.LUA_TNUMBER:
+			results[i] = ffi.ToNumber(state, stackIndex)
+		case ffi.LUA_TSTRING:
+			results[i] = ffi.ToString(state, stackIndex)
+		case ffi.LUA_TTABLE:
+			results[i] = "<table>"
+		case ffi.LUA_TFUNCTION:
+			results[i] = "<function>"
+		default:
+			results[i] = "<unknown>"
+		}
+	}
+
+	ffi.Pop(state, resultsCount)
+
+	return results, nil
 }
 
 func (l *Lua) Memory() *MemoryState {
@@ -39,6 +109,10 @@ func (l *Lua) CreateString(str string) LuaString {
 	return LuaString{vm: l, index: int(index)}
 }
 
+func (l *Lua) SetCompiler(compiler *Compiler) {
+	l.compiler = compiler
+}
+
 func (l *Lua) Close() {
 	l.inner.Close()
 }
@@ -51,6 +125,7 @@ func New() *Lua {
 	return NewWith(StdLibALLSAFE, LuaOptions{
 		CollectGarbage: true,
 		IsSafe:         true,
+		Compiler:       DefaultCompiler(),
 	})
 }
 
@@ -96,7 +171,12 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		}
 	}
 
-	lua := &Lua{inner: state}
+	compiler := options.Compiler
+	if compiler == nil {
+		compiler = DefaultCompiler()
+	}
+
+	lua := &Lua{inner: state, compiler: compiler}
 	runtime.SetFinalizer(lua, func(l *Lua) {
 		if options.CollectGarbage {
 			ffi.LuaGc(l.state(), ffi.LUA_GCCOLLECT, 0)
