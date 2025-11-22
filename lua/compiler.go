@@ -76,11 +76,14 @@ func (c *Compiler) Compile(source string) ([]byte, error) {
 
 func DefaultCompiler() *Compiler {
 	return &Compiler{options: &ffi.CompileOptions{
-		OptimizationLevel: 1,
-		DebugLevel:        1,
-		TypeInfoLevel:     0,
-		CoverageLevel:     0,
-		MutableGlobals:    make([]string, 0),
+		OptimizationLevel:         1,
+		DebugLevel:                1,
+		TypeInfoLevel:             0,
+		CoverageLevel:             0,
+		MutableGlobals:            make([]string, 0),
+		UserdataTypes:             make([]string, 0),
+		LibrariesWithKnownMembers: make([]string, 0),
+		DisabledBuiltins:          make([]string, 0),
 	}}
 }
 
