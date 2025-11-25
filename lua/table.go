@@ -10,34 +10,53 @@ type LuaTable struct {
 func (t *LuaTable) Set(key LuaValue, value LuaValue) {
 	state := t.vm.state()
 
-	ffi.PushValue(state, int32(key.stackIndex()))
-	ffi.PushValue(state, int32(value.stackIndex()))
-	ffi.SetTable(state, int32(t.index))
+	t.deref()     // table (-3)
+	key.deref()   // key   (-2)
+	value.deref() // value (-1)
+
+	ffi.SetTable(state, -3)
+	ffi.Pop(state, 1)
 }
 
 func (t *LuaTable) Get(key LuaValue) LuaValue {
 	state := t.vm.state()
 
-	ffi.PushValue(state, int32(key.stackIndex()))
-	valueType := ffi.GetTable(state, int32(t.index))
+	t.deref()   //////////////////// table (-3)
+	key.deref() //////////////////// key   (-2)
+	ffi.GetTable(state, -2)
 
-	switch valueType {
-	// TODO: other types
-	case ffi.LUA_TSTRING:
-		return &LuaString{vm: t.vm, index: int(ffi.GetTop(state))}
-	default:
-		panic("Unknown type")
+	val := intoLuaValue(t.vm, -1) // value (-1)
+	ffi.Pop(state, 2)
+
+	return val
+}
+
+func (t *LuaTable) Iterable() map[LuaValue]LuaValue {
+	state := t.vm.state()
+
+	t.deref()
+	tableIndex := ffi.GetTop(state)
+	ffi.PushNil(state)
+
+	obj := make(map[LuaValue]LuaValue)
+	for ffi.Next(state, tableIndex) != 0 {
+		key, value := intoLuaValue(t.vm, -2), intoLuaValue(t.vm, -1)
+		obj[key] = value
+
+		ffi.Pop(state, 1) // only pop value, leave key in place
 	}
+
+	ffi.Pop(state, 1)
+	return obj
 }
 
 //
-// LuaValue Implementation
+// LuaValue implementation
 //
 
-func (s *LuaTable) lua() *Lua {
-	return s.vm
-}
+func (t *LuaTable) lua() *Lua { return t.vm }
+func (t *LuaTable) ref() int  { return t.index }
 
-func (s *LuaTable) stackIndex() int {
-	return s.index
+func (t *LuaTable) deref() int {
+	return int(ffi.RawGetI(t.lua().state(), ffi.LUA_REGISTRYINDEX, int32(t.ref())))
 }

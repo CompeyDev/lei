@@ -19,7 +19,7 @@ type Lua struct {
 	compiler *Compiler
 }
 
-func (l *Lua) Execute(name string, input []byte) ([]any, error) {
+func (l *Lua) Execute(name string, input []byte) ([]LuaValue, error) {
 	// TODO: create a load function which doesnt execute
 
 	state := l.inner.luaState
@@ -56,30 +56,13 @@ func (l *Lua) Execute(name string, input []byte) ([]any, error) {
 	}
 
 	// TODO: contemplate whether to return LuaValues or go values
-	results := make([]any, resultsCount)
+	results := make([]LuaValue, resultsCount)
 	for i := range resultsCount {
 		// The stack has grown by the number of returns of the chunk from the
 		// initial value tracked at the beginning. We add one to that due to
 		// Lua's 1-based indexing system
 		stackIndex := int32(initialStack + i + 1)
-		luaType := ffi.Type(state, stackIndex)
-
-		switch luaType {
-		case ffi.LUA_TNIL:
-			results[i] = nil
-		case ffi.LUA_TBOOLEAN:
-			results[i] = ffi.ToBoolean(state, stackIndex)
-		case ffi.LUA_TNUMBER:
-			results[i] = ffi.ToNumber(state, stackIndex)
-		case ffi.LUA_TSTRING:
-			results[i] = ffi.ToString(state, stackIndex)
-		case ffi.LUA_TTABLE:
-			results[i] = "<table>"
-		case ffi.LUA_TFUNCTION:
-			results[i] = "<function>"
-		default:
-			results[i] = "<unknown>"
-		}
+		results[i] = intoLuaValue(l, stackIndex)
 	}
 
 	ffi.Pop(state, resultsCount)
@@ -91,22 +74,32 @@ func (l *Lua) Memory() *MemoryState {
 	return l.inner.MemState()
 }
 
-func (l *Lua) CreateTable() LuaTable {
+func (l *Lua) CreateTable() *LuaTable {
 	state := l.inner.luaState
-	ffi.NewTable(state)
 
-	return LuaTable{
+	ffi.NewTable(state)
+	index := ffi.Ref(state, -1)
+
+	t := &LuaTable{
 		vm:    l,
-		index: int(ffi.GetTop(state)),
+		index: int(index),
 	}
+
+	return t
 }
 
-func (l *Lua) CreateString(str string) LuaString {
+func (l *Lua) CreateString(str string) *LuaString {
 	state := l.inner.luaState
 
 	ffi.PushString(state, str)
-	index := ffi.GetTop(state)
-	return LuaString{vm: l, index: int(index)}
+
+	index := ffi.Ref(state, -1)
+	ffi.RawGetI(state, ffi.LUA_REGISTRYINDEX, int32(index))
+
+	ffi.Pop(state, 1)
+
+	s := &LuaString{vm: l, index: int(index)}
+	return s
 }
 
 func (l *Lua) SetCompiler(compiler *Compiler) {
