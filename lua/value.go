@@ -3,6 +3,7 @@ package lua
 import (
 	"fmt"
 	"reflect"
+	"strings"
 
 	"github.com/CompeyDev/lei/ffi"
 )
@@ -18,6 +19,10 @@ func TypeName(val LuaValue) string {
 	return ffi.TypeName(lua, ffi.Type(lua, int32(val.ref())))
 }
 
+//
+// Lua<->Go Type Conversion
+//
+
 func As[T any](v LuaValue) (T, error) {
 	var zero T
 
@@ -28,8 +33,6 @@ func As[T any](v LuaValue) (T, error) {
 }
 
 func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
-	// TODO: allow annotations to override field names
-
 	zero := reflect.Zero(t)
 
 	switch val := v.(type) {
@@ -81,17 +84,47 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 					continue
 				}
 
-				field := res.FieldByName(keyStr.ToString())
-				if !field.IsValid() || !field.CanSet() {
-					continue
+				luaKey := keyStr.ToString()
+				var field reflect.Value
+				var found bool
+
+				for i := 0; i < t.NumField(); i++ {
+					// Annotation-based field name overrides (eg: `lua:"field_name"`)
+					structField := t.Field(i)
+					tagVal, ok := structField.Tag.Lookup("lua")
+					if ok && tagVal == luaKey {
+						field = res.Field(i)
+						found = true
+						break
+					}
+
+					// Exact matches
+					if structField.Name == luaKey {
+						field = res.Field(i)
+						found = true
+						break
+					}
+
+					// If field is exported, try also using lowercase first character
+					if name := structField.Name; structField.IsExported() {
+						lower := strings.ToLower(name[:1]) + name[1:]
+						if lower == luaKey {
+							field = res.Field(i)
+							found = true
+							break
+						}
+					}
 				}
 
-				vVal, err := asReflectValue(value, field.Type())
-				if err != nil {
-					return zero, err
-				}
+				if found && field.IsValid() && field.CanSet() {
+					// Recursively convert value to a reflect value
+					vVal, err := asReflectValue(value, field.Type())
+					if err != nil {
+						return zero, err
+					}
 
-				field.Set(vVal)
+					field.Set(vVal)
+				}
 			}
 
 			return res, nil
