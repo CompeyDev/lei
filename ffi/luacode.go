@@ -1,7 +1,7 @@
 package ffi
 
 /*
-#cgo CFLAGS: -Iluau/Compiler/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
+#cgo CFLAGS: -Iluau/Compiler/include
 #cgo LDFLAGS: -Lluau/cmake -lLuau.Compiler -lLuau.Ast -lm -lstdc++
 #include <stdlib.h>
 #include <luacode.h>

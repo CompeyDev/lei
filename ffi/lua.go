@@ -1,7 +1,7 @@
 package ffi
 
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
+#cgo CFLAGS: -Iluau/VM/include
 #cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
@@ -398,9 +398,13 @@ func PushString(L *LuaState, s string) {
 // arguments from Go->C isn't something that is possible.
 // func PushFStringL(L *lua_State, fmt string) {}
 
-func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname string, nup int32, cont unsafe.Pointer) {
-	cdebugname := C.CString(debugname)
-	defer C.free(unsafe.Pointer(cdebugname))
+func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname *string, nup int32, cont unsafe.Pointer) {
+	var cdebugname *C.char
+	if debugname != nil && *debugname != "" {
+		cdebugname = C.CString(*debugname)
+		defer C.free(unsafe.Pointer(cdebugname))
+	}
+
 	C.clua_pushcclosurek(L, f, cdebugname, C.int(nup), cont)
 }
 
@@ -964,18 +968,18 @@ func PushLiteral(L *LuaState, s string) {
 }
 
 func PushCFunction(L *LuaState, f unsafe.Pointer) {
-	PushCClosureK(L, f, *new(string), 0, nil)
+	PushCClosureK(L, f, new(string), 0, nil)
 }
 
-func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname string) {
+func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname *string) {
 	PushCClosureK(L, f, debugname, 0, nil)
 }
 
 func PushCClosure(L *LuaState, f unsafe.Pointer, nup int32) {
-	PushCClosureK(L, f, *new(string), nup, nil)
+	PushCClosureK(L, f, new(string), nup, nil)
 }
 
-func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname string, nup int32) {
+func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname *string, nup int32) {
 	PushCClosureK(L, f, debugname, nup, nil)
 }
 
