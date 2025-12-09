@@ -2,6 +2,7 @@ package lua
 
 import (
 	"runtime"
+	"runtime/cgo"
 	"unsafe"
 
 	"github.com/CompeyDev/lei/ffi"
@@ -15,59 +16,23 @@ type LuaOptions struct {
 }
 
 type Lua struct {
-	inner    *StateWithMemory
-	compiler *Compiler
+	inner      *StateWithMemory
+	compiler   *Compiler
+	fnRegistry *functionRegistry
 }
 
-func (l *Lua) Execute(name string, input []byte) ([]LuaValue, error) {
-	// TODO: create a load function which doesnt execute
-
-	state := l.inner.luaState
-	initialStack := ffi.GetTop(state) // Track initial stack size
-
+func (l *Lua) Load(name string, input []byte) (*LuaChunk, error) {
+	chunk := &LuaChunk{vm: l, bytecode: input}
 	if !isBytecode(input) {
 		bytecode, err := l.compiler.Compile(string(input))
 		if err != nil {
 			return nil, err
 		}
 
-		input = bytecode
+		chunk.bytecode = bytecode
 	}
 
-	loadResult := ffi.LuauLoad(state, name, input, uint64(len(input)), 0)
-	loadErr := newLoadError(state, int(loadResult))
-
-	if loadErr != nil {
-		return nil, loadErr
-	}
-
-	execResult := ffi.Pcall(state, 0, -1, 0)
-	execErr := newLoadError(state, int(execResult))
-
-	if execErr != nil {
-		return nil, execErr
-	}
-
-	stackNow := ffi.GetTop(state)
-	resultsCount := stackNow - initialStack
-
-	if resultsCount == 0 {
-		return nil, nil
-	}
-
-	// TODO: contemplate whether to return LuaValues or go values
-	results := make([]LuaValue, resultsCount)
-	for i := range resultsCount {
-		// The stack has grown by the number of returns of the chunk from the
-		// initial value tracked at the beginning. We add one to that due to
-		// Lua's 1-based indexing system
-		stackIndex := int32(initialStack + i + 1)
-		results[i] = intoLuaValue(l, stackIndex)
-	}
-
-	ffi.Pop(state, resultsCount)
-
-	return results, nil
+	return chunk, nil
 }
 
 func (l *Lua) Memory() *MemoryState {
@@ -80,10 +45,8 @@ func (l *Lua) CreateTable() *LuaTable {
 	ffi.NewTable(state)
 	index := ffi.Ref(state, -1)
 
-	t := &LuaTable{
-		vm:    l,
-		index: int(index),
-	}
+	t := &LuaTable{vm: l, index: int(index)}
+	runtime.SetFinalizer(t, valueUnrefer[*LuaTable](t.lua()))
 
 	return t
 }
@@ -92,14 +55,29 @@ func (l *Lua) CreateString(str string) *LuaString {
 	state := l.inner.luaState
 
 	ffi.PushString(state, str)
-
 	index := ffi.Ref(state, -1)
-	ffi.RawGetI(state, ffi.LUA_REGISTRYINDEX, int32(index))
-
-	ffi.Pop(state, 1)
 
 	s := &LuaString{vm: l, index: int(index)}
+	runtime.SetFinalizer(s, valueUnrefer[*LuaString](s.lua()))
+
 	return s
+}
+
+func (l *Lua) CreateFunction(fn ffi.LuaCFunction) *LuaChunk {
+	state := l.state()
+
+	entry := l.fnRegistry.register(fn)
+	registryHandle := uintptr(cgo.NewHandle(l.fnRegistry))
+
+	ffi.PushLightUserdata(state, unsafe.Pointer(registryHandle))
+	ffi.PushLightUserdata(state, unsafe.Pointer(entry))
+	ffi.PushCClosureK(state, registryTrampoline, nil, 2, nil)
+
+	index := ffi.Ref(state, -1)
+	c := &LuaChunk{vm: l, index: int(index), funcID: entry}
+	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
+
+	return c
 }
 
 func (l *Lua) SetCompiler(compiler *Compiler) {
@@ -169,7 +147,7 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		compiler = DefaultCompiler()
 	}
 
-	lua := &Lua{inner: state, compiler: compiler}
+	lua := &Lua{inner: state, compiler: compiler, fnRegistry: newFunctionRegistry()}
 	runtime.SetFinalizer(lua, func(l *Lua) {
 		if options.CollectGarbage {
 			ffi.LuaGc(l.state(), ffi.LUA_GCCOLLECT, 0)

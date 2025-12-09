@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/CompeyDev/lei/ffi"
 	"github.com/CompeyDev/lei/lua"
 )
 
@@ -18,9 +19,15 @@ func main() {
 	fmt.Printf("Used: %d, Limit: %d\n", mem.Used(), mem.Limit())
 
 	fmt.Println(key.ToString(), table.Get(key).(*lua.LuaString).ToString())
-	values, err := state.Execute("main", []byte("print('hello, lei!'); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
+	chunk, err := state.Load("main", []byte("print('hello, lei!!!!'); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
 	if err != nil {
 		fmt.Println(err)
+		return
+	}
+
+	values, returnErr := chunk.Call()
+	if returnErr != nil {
+		fmt.Println(returnErr)
 		return
 	}
 
@@ -54,5 +61,22 @@ func main() {
 
 	for k, v := range iterable { // or, we can use `.Iterable`
 		fmt.Printf("%s %s\n", k, v)
+	}
+
+	cFnChunk := state.CreateFunction(func(L *ffi.LuaState) int32 {
+		ffi.PushString(L, "Hello")
+		ffi.PushString(L, "from")
+		ffi.PushString(L, fmt.Sprintf("Go, %s!", ffi.LCheckString(L, 1)))
+		return 3
+	})
+
+	returns, callErr := cFnChunk.Call(state.CreateString("Lua"))
+	if callErr != nil {
+		fmt.Println(callErr)
+		return
+	}
+
+	for i, ret := range returns {
+		fmt.Printf("Return %d: %s\n", i+1, ret.(*lua.LuaString).ToString())
 	}
 }

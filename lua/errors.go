@@ -6,12 +6,12 @@ import (
 	"github.com/CompeyDev/lei/ffi"
 )
 
-type LoadError struct {
+type LuaError struct {
 	Code    int
 	Message string
 }
 
-func (e *LoadError) Error() string {
+func (e *LuaError) Error() string {
 	switch e.Code {
 	case ffi.LUA_ERRSYNTAX:
 		return "syntax error: " + e.Message
@@ -24,10 +24,10 @@ func (e *LoadError) Error() string {
 	}
 }
 
-func newLoadError(state *ffi.LuaState, code int) *LoadError {
+func newLuaError(state *ffi.LuaState, code int) *LuaError {
 	if code != ffi.LUA_OK {
 		message := ffi.ToString(state, -1)
-		err := &LoadError{Code: code, Message: message}
+		err := &LuaError{Code: code, Message: message}
 
 		ffi.Pop(state, 1)
 

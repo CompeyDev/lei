@@ -1,7 +1,6 @@
 package lua
 
 /*
-#cgo CFLAGS: -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
 #include <stdlib.h>
 #include <stdint.h>
 

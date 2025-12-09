@@ -150,8 +150,14 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 		ref := ffi.Ref(state, index)
 		return &LuaTable{vm: lua, index: int(ref)}
 	case ffi.LUA_TNIL:
-		return &LuaNil{}
+		return &LuaNil{vm: lua}
 	default:
 		panic("unsupported Lua type")
+	}
+}
+
+func valueUnrefer[T LuaValue](lua *Lua) func(T) {
+	return func(value T) {
+		ffi.Unref(lua.state(), int32(value.ref()))
 	}
 }

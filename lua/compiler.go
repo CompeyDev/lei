@@ -1,6 +1,5 @@
 package lua
 
-import "C"
 import (
 	"github.com/CompeyDev/lei/ffi"
 )
