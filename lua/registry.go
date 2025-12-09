@@ -15,18 +15,19 @@ import (
 #include <stdint.h>
 
 int registryTrampoline(lua_State* L);
+void registryTrampolineDtor(lua_State* L);
 */
 import "C"
 
 var registryTrampoline = C.registryTrampoline
+var registryTrampolineDtor = C.registryTrampolineDtor
 
 //export registryTrampolineImpl
-func registryTrampolineImpl(lua *C.lua_State, registryPtr uintptr, funcID uintptr) C.int {
-	handle := cgo.Handle(registryPtr)
-	reg := handle.Value().(*functionRegistry)
+func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
 	state := (*ffi.LuaState)(lua)
+	entry := cgo.Handle(handle).Value().(*functionEntry)
 
-	fn, ok := reg.get(funcID)
+	fn, ok := entry.registry.get(entry.id)
 	if !ok {
 		ffi.PushString(state, "function not found in registry")
 		ffi.Error(state)
@@ -36,9 +37,21 @@ func registryTrampolineImpl(lua *C.lua_State, registryPtr uintptr, funcID uintpt
 	return C.int(fn(state))
 }
 
+//export registryTrampolineDtorImpl
+func registryTrampolineDtorImpl(_ *C.lua_State, handle C.uintptr_t) {
+	entry := cgo.Handle(handle).Value().(*functionEntry)
+	delete(entry.registry.functions, entry.id)
+	cgo.Handle(handle).Delete()
+}
+
 type functionRegistry struct {
 	functions map[uintptr]ffi.LuaCFunction
 	nextID    uintptr
+}
+
+type functionEntry struct {
+	registry *functionRegistry
+	id       uintptr
 }
 
 func newFunctionRegistry() *functionRegistry {
@@ -47,21 +60,14 @@ func newFunctionRegistry() *functionRegistry {
 	}
 }
 
-func (fr *functionRegistry) register(fn ffi.LuaCFunction) uintptr {
+func (fr *functionRegistry) register(fn ffi.LuaCFunction) *functionEntry {
 	fr.nextID++
 	id := fr.nextID
 	fr.functions[id] = fn
-	return id
+	return &functionEntry{registry: fr, id: id}
 }
 
 func (fr *functionRegistry) get(id uintptr) (ffi.LuaCFunction, bool) {
 	fn, ok := fr.functions[id]
 	return fn, ok
 }
-
-// FIXME: there is a memory leak of function entries here; we need to unregister
-// once they are no longer used by Go or Lua. the issue here is that we cannot know
-// when Lua is done with the function, so we need some kind of finalizer on the
-// Lua side to notify us when it's done. the typical solution would be to use a full
-// userdata instead of lightuserdata and set a dtor for that which calls back into Go
-// to unregister

@@ -67,14 +67,15 @@ func (l *Lua) CreateFunction(fn ffi.LuaCFunction) *LuaChunk {
 	state := l.state()
 
 	entry := l.fnRegistry.register(fn)
-	registryHandle := uintptr(cgo.NewHandle(l.fnRegistry))
+	handle := cgo.NewHandle(entry)
 
-	ffi.PushLightUserdata(state, unsafe.Pointer(registryHandle))
-	ffi.PushLightUserdata(state, unsafe.Pointer(entry))
-	ffi.PushCClosureK(state, registryTrampoline, nil, 2, nil)
+	ud := (*uintptr)(ffi.NewUserdataDtor(state, uint64(unsafe.Sizeof(uintptr(0))), registryTrampolineDtor))
+	*ud = uintptr(handle)
+
+	ffi.PushCClosureK(state, registryTrampoline, nil, 1, nil)
 
 	index := ffi.Ref(state, -1)
-	c := &LuaChunk{vm: l, index: int(index), funcID: entry}
+	c := &LuaChunk{vm: l, index: int(index)}
 	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
 
 	return c

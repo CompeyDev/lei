@@ -10,8 +10,7 @@ type LuaChunk struct {
 	name     string
 	bytecode []byte
 
-	index  int
-	funcID uintptr
+	index int
 }
 
 func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
