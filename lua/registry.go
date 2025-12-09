@@ -24,17 +24,45 @@ var registryTrampolineDtor = C.registryTrampolineDtor
 
 //export registryTrampolineImpl
 func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
-	state := (*ffi.LuaState)(lua)
+	rawState := (*ffi.LuaState)(lua)
+	state := &Lua{
+		inner: &StateWithMemory{
+			memState: getMemoryState(rawState),
+			luaState: rawState,
+		},
+	}
+
 	entry := cgo.Handle(handle).Value().(*functionEntry)
 
 	fn, ok := entry.registry.get(entry.id)
 	if !ok {
-		ffi.PushString(state, "function not found in registry")
-		ffi.Error(state)
+		ffi.PushString(rawState, "function not found in registry")
+		ffi.Error(rawState)
 		return 0
 	}
 
-	return C.int(fn(state))
+	argsCount := int(ffi.ToNumber(rawState, 1))
+	args := make([]LuaValue, argsCount)
+
+	for i := range argsCount {
+		// Lua stack is 1-based, and the first argument is at index 2 (since index 1 is the count)
+		stackIndex := int32(i + 2)
+		args[i] = intoLuaValue(state, stackIndex)
+	}
+
+	returns, err := fn(state, args...)
+
+	if err != nil {
+		ffi.PushString(rawState, err.Error())
+		ffi.Error(rawState)
+		return 0
+	}
+
+	for _, ret := range returns {
+		ret.deref()
+	}
+
+	return C.int(len(returns))
 }
 
 //export registryTrampolineDtorImpl
@@ -44,8 +72,10 @@ func registryTrampolineDtorImpl(_ *C.lua_State, handle C.uintptr_t) {
 	cgo.Handle(handle).Delete()
 }
 
+type GoFunction func(lua *Lua, args ...LuaValue) ([]LuaValue, error)
+
 type functionRegistry struct {
-	functions map[uintptr]ffi.LuaCFunction
+	functions map[uintptr]GoFunction
 	nextID    uintptr
 }
 
@@ -56,18 +86,18 @@ type functionEntry struct {
 
 func newFunctionRegistry() *functionRegistry {
 	return &functionRegistry{
-		functions: make(map[uintptr]ffi.LuaCFunction),
+		functions: make(map[uintptr]GoFunction),
 	}
 }
 
-func (fr *functionRegistry) register(fn ffi.LuaCFunction) *functionEntry {
+func (fr *functionRegistry) register(fn GoFunction) *functionEntry {
 	fr.nextID++
 	id := fr.nextID
 	fr.functions[id] = fn
 	return &functionEntry{registry: fr, id: id}
 }
 
-func (fr *functionRegistry) get(id uintptr) (ffi.LuaCFunction, bool) {
+func (fr *functionRegistry) get(id uintptr) (GoFunction, bool) {
 	fn, ok := fr.functions[id]
 	return fn, ok
 }

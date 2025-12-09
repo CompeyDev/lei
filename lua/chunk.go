@@ -18,6 +18,7 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 
 	initialStack := ffi.GetTop(state) // Track initial stack size
 
+	argsCount := len(args)
 	if c.bytecode != nil {
 		hasLoaded := ffi.LuauLoad(state, c.name, c.bytecode, uint64(len(c.bytecode)), 0)
 		if !hasLoaded {
@@ -28,13 +29,15 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 		// Push function onto the stack
 		ffi.RawGetI(state, ffi.LUA_REGISTRYINDEX, int32(c.index))
 
-		// Push all arguments onto the stack (deref)
+		// Push the length and the arguments onto the stack (deref)
+		ffi.PushNumber(state, ffi.LuaNumber(argsCount))
+		argsCount++
 		for _, arg := range args {
 			arg.deref()
 		}
 	}
 
-	status := ffi.Pcall(state, int32(len(args)), -1, 0)
+	status := ffi.Pcall(state, int32(argsCount), -1, 0)
 	if status != ffi.LUA_OK {
 		return nil, newLuaError(state, int(status))
 	}

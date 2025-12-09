@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"github.com/CompeyDev/lei/ffi"
 	"github.com/CompeyDev/lei/lua"
 )
 
@@ -63,11 +62,12 @@ func main() {
 		fmt.Printf("%s %s\n", k, v)
 	}
 
-	cFnChunk := state.CreateFunction(func(L *ffi.LuaState) int32 {
-		ffi.PushString(L, "Hello")
-		ffi.PushString(L, "from")
-		ffi.PushString(L, fmt.Sprintf("Go, %s!", ffi.LCheckString(L, 1)))
-		return 3
+	cFnChunk := state.CreateFunction(func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+		return []lua.LuaValue{
+			luaState.CreateString("Hello"),
+			luaState.CreateString("from"),
+			luaState.CreateString(fmt.Sprintf("Go, %s!", args[0].(*lua.LuaString).ToString())),
+		}, nil
 	})
 
 	returns, callErr := cFnChunk.Call(state.CreateString("Lua"))

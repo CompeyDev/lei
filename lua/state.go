@@ -63,7 +63,7 @@ func (l *Lua) CreateString(str string) *LuaString {
 	return s
 }
 
-func (l *Lua) CreateFunction(fn ffi.LuaCFunction) *LuaChunk {
+func (l *Lua) CreateFunction(fn GoFunction) *LuaChunk {
 	state := l.state()
 
 	entry := l.fnRegistry.register(fn)
