@@ -66,8 +66,6 @@ func LArgError(L *LuaState, narg int32, extramsg string) {
 
 func LCheckLString(L *LuaState, narg int32, l *uint64) string {
 	p := C.luaL_checklstring(L, C.int(narg), (*C.size_t)(l))
-	defer C.free(unsafe.Pointer(p))
-
 	return C.GoString(p)
 }
 
@@ -76,8 +74,6 @@ func LOptLString(L *LuaState, narg int32, def string, l *uint64) string {
 	defer C.free(unsafe.Pointer(cdef))
 
 	p := C.luaL_optlstring(L, C.int(narg), cdef, (*C.ulong)(l))
-	defer C.free(unsafe.Pointer(p))
-
 	return C.GoString(p)
 }
 
