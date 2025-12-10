@@ -27,7 +27,7 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 		}
 	} else {
 		// Push function onto the stack
-		ffi.RawGetI(state, ffi.LUA_REGISTRYINDEX, int32(c.index))
+		ffi.GetRef(state, int32(c.index))
 
 		// Push the length and the arguments onto the stack (deref)
 		ffi.PushNumber(state, ffi.LuaNumber(argsCount))

@@ -60,5 +60,5 @@ func (t *LuaTable) lua() *Lua { return t.vm }
 func (t *LuaTable) ref() int  { return t.index }
 
 func (t *LuaTable) deref() int {
-	return int(ffi.RawGetI(t.lua().state(), ffi.LUA_REGISTRYINDEX, int32(t.ref())))
+	return int(ffi.GetRef(t.vm.state(), int32(t.ref())))
 }

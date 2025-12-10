@@ -737,6 +737,10 @@ func Unref(L *LuaState, ref int32) {
 	C.lua_unref(L, C.int(ref))
 }
 
+func GetRef(L *LuaState, ref int32) int32 {
+	return RawGetI(L, LUA_REGISTRYINDEX, ref)
+}
+
 //
 // ==================
 //     Debug API

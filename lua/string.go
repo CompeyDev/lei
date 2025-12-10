@@ -39,5 +39,5 @@ func (s *LuaString) lua() *Lua { return s.vm }
 func (s *LuaString) ref() int  { return s.index }
 
 func (s *LuaString) deref() int {
-	return int(ffi.RawGetI(s.lua().state(), ffi.LUA_REGISTRYINDEX, int32(s.ref())))
+	return int(ffi.GetRef(s.vm.state(), int32(s.ref())))
 }
