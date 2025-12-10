@@ -33,6 +33,8 @@ func (s *LuaString) ToPointer() unsafe.Pointer {
 // LuaValue implementation
 //
 
+var _ LuaValue = (*LuaString)(nil)
+
 func (s *LuaString) lua() *Lua { return s.vm }
 func (s *LuaString) ref() int  { return s.index }
 

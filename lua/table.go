@@ -54,6 +54,8 @@ func (t *LuaTable) Iterable() map[LuaValue]LuaValue {
 // LuaValue implementation
 //
 
+var _ LuaValue = (*LuaTable)(nil)
+
 func (t *LuaTable) lua() *Lua { return t.vm }
 func (t *LuaTable) ref() int  { return t.index }
 
