@@ -36,6 +36,12 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 	zero := reflect.Zero(t)
 
 	switch val := v.(type) {
+	case *LuaNumber:
+		if t.Kind() == reflect.Float64 {
+			num := reflect.ValueOf(val.inner)
+			return num, nil
+		}
+
 	case *LuaString:
 		if t.Kind() == reflect.String {
 			str := reflect.ValueOf(val.ToString()).Convert(t)
@@ -143,6 +149,9 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 	state := lua.state()
 
 	switch ffi.Type(state, index) {
+	case ffi.LUA_TNUMBER:
+		num := ffi.ToNumber(state, index)
+		return &LuaNumber{vm: lua, inner: float64(num)}
 	case ffi.LUA_TSTRING:
 		ref := ffi.Ref(state, index)
 		return &LuaString{vm: lua, index: int(ref)}
