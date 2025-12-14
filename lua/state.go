@@ -46,7 +46,7 @@ func (l *Lua) CreateTable() *LuaTable {
 	index := ffi.Ref(state, -1)
 
 	t := &LuaTable{vm: l, index: int(index)}
-	runtime.SetFinalizer(t, valueUnrefer[*LuaTable](t.lua()))
+	runtime.SetFinalizer(t, valueUnrefer[*LuaTable](l))
 
 	return t
 }
@@ -58,7 +58,7 @@ func (l *Lua) CreateString(str string) *LuaString {
 	index := ffi.Ref(state, -1)
 
 	s := &LuaString{vm: l, index: int(index)}
-	runtime.SetFinalizer(s, valueUnrefer[*LuaString](s.lua()))
+	runtime.SetFinalizer(s, valueUnrefer[*LuaString](l))
 
 	return s
 }

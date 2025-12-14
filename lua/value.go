@@ -9,14 +9,12 @@ import (
 )
 
 type LuaValue interface {
+	// Optionally returns the Lua VM this value belongs to
 	lua() *Lua
+	// Returns the reference index of this value in the Lua registry
 	ref() int
-	deref() int
-}
-
-func TypeName(val LuaValue) string {
-	lua := val.lua().state()
-	return ffi.TypeName(lua, ffi.Type(lua, int32(val.ref())))
+	// Dereferences this value onto the Lua stack, returning the stack index
+	deref(*Lua) int
 }
 
 //
@@ -38,7 +36,7 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 	switch val := v.(type) {
 	case *LuaNumber:
 		if t.Kind() == reflect.Float64 {
-			num := reflect.ValueOf(val.inner)
+			num := reflect.ValueOf(*val).Convert(t)
 			return num, nil
 		}
 
@@ -151,7 +149,8 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 	switch ffi.Type(state, index) {
 	case ffi.LUA_TNUMBER:
 		num := ffi.ToNumber(state, index)
-		return &LuaNumber{vm: lua, inner: float64(num)}
+		li := LuaNumber(float64(num))
+		return &li
 	case ffi.LUA_TSTRING:
 		ref := ffi.Ref(state, index)
 		return &LuaString{vm: lua, index: int(ref)}
@@ -159,7 +158,7 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 		ref := ffi.Ref(state, index)
 		return &LuaTable{vm: lua, index: int(ref)}
 	case ffi.LUA_TNIL:
-		return &LuaNil{vm: lua}
+		return &LuaNil{}
 	default:
 		panic("unsupported Lua type")
 	}

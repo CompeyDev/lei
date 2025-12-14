@@ -14,7 +14,7 @@ type LuaString struct {
 func (s *LuaString) ToString() string {
 	state := s.vm.state()
 
-	s.deref()
+	s.deref(s.vm)
 	defer ffi.Pop(state, 1)
 
 	return ffi.ToString(state, -1)
@@ -23,7 +23,7 @@ func (s *LuaString) ToString() string {
 func (s *LuaString) ToPointer() unsafe.Pointer {
 	state := s.vm.state()
 
-	s.deref()
+	s.deref(s.vm)
 	defer ffi.Pop(state, 1)
 
 	return ffi.ToPointer(state, -1)
@@ -38,6 +38,6 @@ var _ LuaValue = (*LuaString)(nil)
 func (s *LuaString) lua() *Lua { return s.vm }
 func (s *LuaString) ref() int  { return s.index }
 
-func (s *LuaString) deref() int {
-	return int(ffi.GetRef(s.vm.state(), int32(s.ref())))
+func (s *LuaString) deref(lua *Lua) int {
+	return int(ffi.GetRef(lua.state(), int32(s.ref())))
 }

@@ -63,10 +63,12 @@ func main() {
 	}
 
 	cFnChunk := state.CreateFunction(func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+		someNumber := lua.LuaNumber(22713)
 		return []lua.LuaValue{
 			luaState.CreateString("Hello"),
 			luaState.CreateString("from"),
 			luaState.CreateString(fmt.Sprintf("Go, %s!", args[0].(*lua.LuaString).ToString())),
+			&someNumber,
 		}, nil
 	})
 
@@ -77,6 +79,12 @@ func main() {
 	}
 
 	for i, ret := range returns {
-		fmt.Printf("Return %d: %s\n", i+1, ret.(*lua.LuaString).ToString())
+		str, err := lua.As[string](ret)
+		if err == nil {
+			fmt.Printf("Return %d: %s\n", i+1, str)
+		} else {
+			num, _ := lua.As[float64](ret)
+			fmt.Printf("Return %d: %f\n", i+1, num)
+		}
 	}
 }

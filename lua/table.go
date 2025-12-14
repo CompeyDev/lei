@@ -10,9 +10,9 @@ type LuaTable struct {
 func (t *LuaTable) Set(key LuaValue, value LuaValue) {
 	state := t.vm.state()
 
-	t.deref()     // table (-3)
-	key.deref()   // key   (-2)
-	value.deref() // value (-1)
+	t.deref(t.vm)     // table (-3)
+	key.deref(t.vm)   // key   (-2)
+	value.deref(t.vm) // value (-1)
 
 	ffi.SetTable(state, -3)
 	ffi.Pop(state, 1)
@@ -21,11 +21,11 @@ func (t *LuaTable) Set(key LuaValue, value LuaValue) {
 func (t *LuaTable) Get(key LuaValue) LuaValue {
 	state := t.vm.state()
 
-	t.deref()   //////////////////// table (-3)
-	key.deref() //////////////////// key   (-2)
+	t.deref(t.vm)   //////////////////// table (-3)
+	key.deref(t.vm) //////////////////// key   (-2)
 	ffi.GetTable(state, -2)
 
-	val := intoLuaValue(t.vm, -1) // value (-1)
+	val := intoLuaValue(t.vm, -1) ////// value (-1)
 	ffi.Pop(state, 2)
 
 	return val
@@ -34,7 +34,7 @@ func (t *LuaTable) Get(key LuaValue) LuaValue {
 func (t *LuaTable) Iterable() map[LuaValue]LuaValue {
 	state := t.vm.state()
 
-	t.deref()
+	t.deref(t.vm)
 	tableIndex := ffi.GetTop(state)
 	ffi.PushNil(state)
 
@@ -59,6 +59,6 @@ var _ LuaValue = (*LuaTable)(nil)
 func (t *LuaTable) lua() *Lua { return t.vm }
 func (t *LuaTable) ref() int  { return t.index }
 
-func (t *LuaTable) deref() int {
-	return int(ffi.GetRef(t.vm.state(), int32(t.ref())))
+func (t *LuaTable) deref(lua *Lua) int {
+	return int(ffi.GetRef(lua.state(), int32(t.ref())))
 }

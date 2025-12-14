@@ -59,7 +59,7 @@ func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
 	}
 
 	for _, ret := range returns {
-		ret.deref()
+		ret.deref(state)
 	}
 
 	return C.int(len(returns))

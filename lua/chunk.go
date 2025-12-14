@@ -33,7 +33,7 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 		ffi.PushNumber(state, ffi.LuaNumber(argsCount))
 		argsCount++
 		for _, arg := range args {
-			arg.deref()
+			arg.deref(c.vm)
 		}
 	}
 
