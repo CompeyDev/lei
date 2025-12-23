@@ -11,7 +11,7 @@ import (
 
 /*
 #cgo CFLAGS: -I../ffi/luau/VM/include
-#cgo LDFLAGS: -L../ffi/luau/cmake -lLuau.VM -lm -lstdc++
+#cgo LDFLAGS: -L../ffi/_obj -lLuau.VM -lm -lstdc++
 
 #include <lua.h>
 #include <stdlib.h>

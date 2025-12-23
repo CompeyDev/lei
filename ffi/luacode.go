@@ -1,8 +1,10 @@
 package ffi
 
+//go:generate go run ../build buildProject Luau.VM Luau.Compiler Luau.Ast
+
 /*
 #cgo CFLAGS: -Iluau/Compiler/include
-#cgo LDFLAGS: -Lluau/cmake -lLuau.Compiler -lLuau.Ast -lm -lstdc++
+#cgo LDFLAGS: -L_obj -lLuau.Compiler -lLuau.Ast -lm -lstdc++
 #include <stdlib.h>
 #include <luacode.h>
 */
