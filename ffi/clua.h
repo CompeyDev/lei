@@ -1,5 +1,5 @@
 #include <stdlib.h>
-#include <lua.h>
+#include "luau/VM/include/lua.h" 
 
 lua_State* clua_newstate(void* f, void* ud);
 l_noret cluaL_errorL(lua_State* L, char* msg);

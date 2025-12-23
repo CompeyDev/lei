@@ -20,5 +20,8 @@
 # Build script compiled data
 .lei/
 
+# Cgo generated files
+_obj/
+
 # Dependency directories (remove the comment below to include it)
 # vendor/

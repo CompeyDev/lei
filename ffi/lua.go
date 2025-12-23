@@ -1,8 +1,10 @@
 package ffi
 
+//go:generate go run ../build buildProject Luau.VM
+
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
-#cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
+#cgo CFLAGS: -Iluau/VM/include
+#cgo LDFLAGS: -L_obj -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
@@ -36,9 +38,9 @@ const LUA_MULTRET = -1
 //
 
 const (
-	LUA_REGISTRYINDEX = -LUAI_MAXCSTACK - 2000
-	LUA_ENVIRONINDEX  = -LUAI_MAXCSTACK - 2001
-	LUA_GLOBALSINDEX  = -LUAI_MAXCSTACK - 2002
+	LUA_REGISTRYINDEX = C.LUA_REGISTRYINDEX
+	LUA_ENVIRONINDEX  = C.LUA_ENVIRONINDEX
+	LUA_GLOBALSINDEX  = C.LUA_GLOBALSINDEX
 )
 
 //
@@ -48,7 +50,7 @@ const (
 //
 
 const (
-	LUA_OK = iota + 1
+	LUA_OK = iota
 	LUA_YIELD
 	LUA_ERRRUN
 	LUA_ERRSYNTAX
@@ -64,7 +66,7 @@ const (
 //
 
 const (
-	LUA_CORUN = iota + 1
+	LUA_CORUN = iota
 	LUA_COSUS
 	LUA_CONOR
 	LUA_COFIN
@@ -398,9 +400,13 @@ func PushString(L *LuaState, s string) {
 // arguments from Go->C isn't something that is possible.
 // func PushFStringL(L *lua_State, fmt string) {}
 
-func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname string, nup int32, cont unsafe.Pointer) {
-	cdebugname := C.CString(debugname)
-	defer C.free(unsafe.Pointer(cdebugname))
+func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname *string, nup int32, cont unsafe.Pointer) {
+	var cdebugname *C.char
+	if debugname != nil && *debugname != "" {
+		cdebugname = C.CString(*debugname)
+		defer C.free(unsafe.Pointer(cdebugname))
+	}
+
 	C.clua_pushcclosurek(L, f, cdebugname, C.int(nup), cont)
 }
 
@@ -538,14 +544,21 @@ func Setfenv(L *LuaState, idx int32) int32 {
 // =========================
 //
 
-func LuauLoad(L *LuaState, chunkname string, data string, size uint64, env int32) int32 {
+func LuauLoad(L *LuaState, chunkname string, data []byte, size uint64, env int32) bool {
 	cchunkname := C.CString(chunkname)
 	defer C.free(unsafe.Pointer(cchunkname))
 
-	cdata := C.CString(data)
-	defer C.free(unsafe.Pointer(cdata))
+	var cdata *C.char
+	if size == 0 {
+		// NULL for empty slices
+		cdata = (*C.char)(C.NULL)
+	} else {
+		cdata = (*C.char)(unsafe.Pointer(&data[0]))
+	}
 
-	return int32(C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)))
+	// NOTE: We don't free the bytecode after it's loaded
+
+	return C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)) == 0
 }
 
 func Call(L *LuaState, nargs int32, nresults int32) {
@@ -724,6 +737,10 @@ func Ref(L *LuaState, idx int32) int32 {
 
 func Unref(L *LuaState, ref int32) {
 	C.lua_unref(L, C.int(ref))
+}
+
+func GetRef(L *LuaState, ref int32) int32 {
+	return RawGetI(L, LUA_REGISTRYINDEX, ref)
 }
 
 //
@@ -957,18 +974,18 @@ func PushLiteral(L *LuaState, s string) {
 }
 
 func PushCFunction(L *LuaState, f unsafe.Pointer) {
-	PushCClosureK(L, f, *new(string), 0, nil)
+	PushCClosureK(L, f, new(string), 0, nil)
 }
 
-func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname string) {
+func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname *string) {
 	PushCClosureK(L, f, debugname, 0, nil)
 }
 
 func PushCClosure(L *LuaState, f unsafe.Pointer, nup int32) {
-	PushCClosureK(L, f, *new(string), nup, nil)
+	PushCClosureK(L, f, new(string), nup, nil)
 }
 
-func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname string, nup int32) {
+func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname *string, nup int32) {
 	PushCClosureK(L, f, debugname, nup, nil)
 }
 
