@@ -12,6 +12,7 @@ type LuaOptions struct {
 	InitMemoryState *MemoryState
 	CollectGarbage  bool
 	IsSafe          bool
+	CatchPanics     bool
 	Compiler        *Compiler
 }
 
@@ -97,6 +98,7 @@ func New() *Lua {
 	return NewWith(StdLibALLSAFE, LuaOptions{
 		CollectGarbage: true,
 		IsSafe:         true,
+		CatchPanics:    true,
 		Compiler:       DefaultCompiler(),
 	})
 }
@@ -148,7 +150,10 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		compiler = DefaultCompiler()
 	}
 
-	lua := &Lua{inner: state, compiler: compiler, fnRegistry: newFunctionRegistry()}
+	fnReg := newFunctionRegistry()
+	fnReg.recoverPanics = options.CatchPanics
+
+	lua := &Lua{inner: state, compiler: compiler, fnRegistry: fnReg}
 	runtime.SetFinalizer(lua, func(l *Lua) {
 		if options.CollectGarbage {
 			ffi.LuaGc(l.state(), ffi.LUA_GCCOLLECT, 0)

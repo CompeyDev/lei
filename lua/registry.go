@@ -1,10 +1,13 @@
 package lua
 
 import (
+	"fmt"
 	"runtime/cgo"
 
 	"github.com/CompeyDev/lei/ffi"
 )
+
+//go:generate go tool cgo $GOFILE
 
 /*
 #cgo CFLAGS: -I../ffi/luau/VM/include
@@ -23,7 +26,7 @@ var registryTrampoline = C.registryTrampoline
 var registryTrampolineDtor = C.registryTrampolineDtor
 
 //export registryTrampolineImpl
-func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
+func registryTrampolineImpl(lua *C.lua_State, handle uintptr) (C.int, *C.char) {
 	rawState := (*ffi.LuaState)(lua)
 	state := &Lua{
 		inner: &StateWithMemory{
@@ -36,9 +39,7 @@ func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
 
 	fn, ok := entry.registry.get(entry.id)
 	if !ok {
-		ffi.PushString(rawState, "function not found in registry")
-		ffi.Error(rawState)
-		return 0
+		return C.int(-1), C.CString("function not found in registry")
 	}
 
 	argsCount := int(ffi.ToNumber(rawState, 1))
@@ -50,19 +51,18 @@ func registryTrampolineImpl(lua *C.lua_State, handle C.uintptr_t) C.int {
 		args[i] = intoLuaValue(state, stackIndex)
 	}
 
-	returns, err := fn(state, args...)
+	returns, callErr := fn(state, args...)
 
-	if err != nil {
-		ffi.PushString(rawState, err.Error())
-		ffi.Error(rawState)
-		return 0
+	// SAFETY: This must be caught elsewhere to avoid the longjmp
+	if callErr != nil {
+		return C.int(-1), C.CString(callErr.Error())
 	}
 
 	for _, ret := range returns {
 		ret.deref(state)
 	}
 
-	return C.int(len(returns))
+	return C.int(len(returns)), nil
 }
 
 //export registryTrampolineDtorImpl
@@ -75,8 +75,9 @@ func registryTrampolineDtorImpl(_ *C.lua_State, handle C.uintptr_t) {
 type GoFunction func(lua *Lua, args ...LuaValue) ([]LuaValue, error)
 
 type functionRegistry struct {
-	functions map[uintptr]GoFunction
-	nextID    uintptr
+	recoverPanics bool
+	functions     map[uintptr]GoFunction
+	nextID        uintptr
 }
 
 type functionEntry struct {
@@ -99,5 +100,27 @@ func (fr *functionRegistry) register(fn GoFunction) *functionEntry {
 
 func (fr *functionRegistry) get(id uintptr) (GoFunction, bool) {
 	fn, ok := fr.functions[id]
+
+	if fr.recoverPanics {
+		rawFn := fn
+		fn = func(lua *Lua, args ...LuaValue) (result []LuaValue, err error) {
+			defer func() {
+				// Deferred panic handler
+				if recv := recover(); recv != nil {
+					switch v := recv.(type) {
+					case error:
+						err = v
+					default:
+						err = fmt.Errorf("go panic: %v", v)
+					}
+				}
+			}()
+
+			result, err = rawFn(lua, args...)
+
+			return result, err
+		}
+	}
+
 	return fn, ok
 }
