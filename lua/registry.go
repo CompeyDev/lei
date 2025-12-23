@@ -7,7 +7,7 @@ import (
 	"github.com/CompeyDev/lei/ffi"
 )
 
-//go:generate go tool cgo $GOFILE
+//go:generate go tool cgo -- -I../ffi/luau/VM/include $GOFILE
 
 /*
 #cgo CFLAGS: -I../ffi/luau/VM/include
