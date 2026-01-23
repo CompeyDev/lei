@@ -18,6 +18,7 @@ int registryTrampoline(lua_State* L) {
     // TODO: Figure out what happens if some Lua code calls this without a pcall, longjmp?
     if (err != NULL) {
         lua_pushstring(L, err);
+        free(err);
         lua_error(L);
     }
 
