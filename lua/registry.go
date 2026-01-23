@@ -29,6 +29,7 @@ var registryTrampolineDtor = C.registryTrampolineDtor
 func registryTrampolineImpl(lua *C.lua_State, handle uintptr) (C.int, *C.char) {
 	rawState := (*ffi.LuaState)(lua)
 	state := &Lua{
+		// FIXME: what about the function registry?
 		inner: &StateWithMemory{
 			memState: getMemoryState(rawState),
 			luaState: rawState,
@@ -72,7 +73,7 @@ func registryTrampolineDtorImpl(_ *C.lua_State, handle C.uintptr_t) {
 	cgo.Handle(handle).Delete()
 }
 
-type GoFunction func(lua *Lua, args ...LuaValue) ([]LuaValue, error)
+type GoFunction = func(lua *Lua, args ...LuaValue) ([]LuaValue, error)
 
 type functionRegistry struct {
 	recoverPanics bool
