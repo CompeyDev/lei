@@ -138,6 +138,12 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 	case *LuaNil:
 		return zero, nil
 
+	case *LuaUserData:
+		if downcasted := val.Downcast(); downcasted != nil {
+			return reflect.ValueOf(downcasted).Convert(t), nil
+		}
+
+		return zero, fmt.Errorf("value isn't userdata")
 	}
 
 	return zero, fmt.Errorf("cannot convert LuaValue(%T) into %T", v, zero)
@@ -159,6 +165,9 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 		return &LuaTable{vm: lua, index: int(ref)}
 	case ffi.LUA_TNIL:
 		return &LuaNil{}
+	case ffi.LUA_TUSERDATA:
+		ref := ffi.Ref(state, index)
+		return &LuaUserData{vm: lua, index: int(ref)}
 	default:
 		panic("unsupported Lua type")
 	}

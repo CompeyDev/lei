@@ -40,6 +40,21 @@ func (l *Lua) Memory() *MemoryState {
 	return l.inner.MemState()
 }
 
+func (l *Lua) GetGlobal(global string) LuaValue {
+	state := l.state()
+
+	ffi.GetGlobal(state, global)
+	value := intoLuaValue(l, -1)
+
+	ffi.Pop(state, 1)
+	return value
+}
+
+func (l *Lua) SetGlobal(global string, value LuaValue) {
+	value.deref(l)
+	ffi.SetGlobal(l.state(), global)
+}
+
 func (l *Lua) CreateTable() *LuaTable {
 	state := l.inner.luaState
 
@@ -68,10 +83,7 @@ func (l *Lua) CreateFunction(fn GoFunction) *LuaChunk {
 	state := l.state()
 
 	entry := l.fnRegistry.register(fn)
-	handle := cgo.NewHandle(entry)
-
-	ud := (*uintptr)(ffi.NewUserdataDtor(state, uint64(unsafe.Sizeof(uintptr(0))), registryTrampolineDtor))
-	*ud = uintptr(handle)
+	pushUpvalue(state, entry, registryTrampolineDtor)
 
 	ffi.PushCClosureK(state, registryTrampoline, nil, 1, nil)
 
@@ -80,6 +92,46 @@ func (l *Lua) CreateFunction(fn GoFunction) *LuaChunk {
 	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
 
 	return c
+}
+
+func (l *Lua) CreateUserData(value IntoUserData) LuaUserData {
+	state := l.state()
+	userdata := &LuaUserData{vm: l, inner: value}
+
+	// TOOD: custom destructor support
+	ud := ffi.NewUserdata(state, uint64(unsafe.Sizeof(uintptr(0))))
+	*(*IntoUserData)(unsafe.Pointer(ud)) = value
+
+	if ffi.LNewMetatable(state, "") {
+		fieldsMap := newFieldMap()
+		methodsMap := newMethodMap(l.fnRegistry)
+		metaMethodsMap := newMethodMap(l.fnRegistry)
+
+		value.Fields(fieldsMap)
+		value.Methods(methodsMap)
+		value.MetaMethods(metaMethodsMap)
+
+		pushUpvalue(state, fieldsMap, fieldMapDtor)
+		pushUpvalue(state, methodsMap, methodMapDtor)
+
+		ffi.PushCClosureK(state, indexMt, nil, 2, nil)
+		ffi.SetField(state, -2, "__index")
+
+		for method, impl := range metaMethodsMap.inner {
+			if method == "__index" {
+				panic("Cannot have a manual __index implementation")
+			}
+
+			pushUpvalue(state, impl, registryTrampolineDtor)
+			ffi.PushCClosureK(state, registryTrampoline, nil, 1, nil)
+			ffi.SetField(state, -2, method)
+		}
+	}
+
+	ffi.SetMetatable(state, -2)
+
+	userdata.index = int(ffi.Ref(state, -1))
+	return *userdata
 }
 
 func (l *Lua) SetCompiler(compiler *Compiler) {
@@ -163,4 +215,19 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 	})
 
 	return lua
+}
+
+func pushUpvalue[T any](state *ffi.LuaState, ptr *T, dtor unsafe.Pointer) *uintptr {
+	var up *uintptr
+
+	sz := uint64(unsafe.Sizeof(uintptr(0)))
+	if dtor != nil {
+		up = (*uintptr)(ffi.NewUserdataDtor(state, sz, dtor))
+	} else {
+		up = (*uintptr)(ffi.NewUserdata(state, sz))
+	}
+
+	*up = uintptr(cgo.NewHandle(ptr))
+
+	return up
 }

@@ -87,4 +87,55 @@ func main() {
 			fmt.Printf("Return %d: %f\n", i+1, num)
 		}
 	}
+
+	class := &Class{value: 420.0}
+	classUd := state.CreateUserData(class)
+	state.SetGlobal("classUd", &classUd)
+
+	got := state.GetGlobal("classUd").(*lua.LuaUserData).Downcast()
+	fmt.Println(got.(*Class).value)
+
+	udChunk, udErr := state.Load("udChunk", []byte("print(tostring(classUd), classUd.toggle); classUd.flip(); print(classUd.toggle, classUd.fakeToggle)"))
+	if udErr != nil {
+		fmt.Println(udErr)
+		return
+	}
+
+	_, udCallErr := udChunk.Call()
+	if udCallErr != nil {
+		fmt.Println(udCallErr)
+		return
+	}
 }
+
+type Class struct{ value float64 }
+
+var _ lua.IntoUserData = (*Class)(nil)
+
+func (c *Class) Fields(fields *lua.FieldMap) {
+	// NOTE: this references takes a copy of the value and mutations hence do
+	// not persist here. Instead we need a getter which captures the class
+	// itself
+	funnyNumber := lua.LuaNumber(c.value)
+	fields.Insert("fakeToggle", &funnyNumber)
+
+	fields.Insert("toggle", func(*lua.Lua) lua.LuaValue {
+		value := lua.LuaNumber(c.value)
+		return &value
+	})
+}
+
+func (c *Class) MetaMethods(metaMethods *lua.MethodMap) {
+	metaMethods.Insert("__tostring", func(vm *lua.Lua, _ ...lua.LuaValue) ([]lua.LuaValue, error) {
+		return []lua.LuaValue{vm.CreateString("Class")}, nil
+	})
+}
+
+func (c *Class) Methods(methods *lua.MethodMap) {
+	methods.Insert("flip", func(_G *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+		c.toggle()
+		return []lua.LuaValue{}, nil
+	})
+}
+
+func (c *Class) toggle() { c.value = 69.0 }
