@@ -7,43 +7,51 @@ import (
 type Compiler struct{ options *ffi.CompileOptions }
 
 func (c *Compiler) WithOptimizationLevel(lvl int) *Compiler {
-	c.options.OptimizationLevel = lvl
-	return c
+	opts := *c.options
+	opts.OptimizationLevel = lvl
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithDebugLevel(lvl int) *Compiler {
-	c.options.DebugLevel = lvl
-	return c
+	opts := *c.options
+	opts.DebugLevel = lvl
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithTypeInfoLevel(lvl int) *Compiler {
-	c.options.TypeInfoLevel = lvl
-	return c
+	opts := *c.options
+	opts.TypeInfoLevel = lvl
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithCoverageLevel(lvl int) *Compiler {
-	c.options.CoverageLevel = lvl
-	return c
+	opts := *c.options
+	opts.CoverageLevel = lvl
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithMutableGlobals(globals []string) *Compiler {
-	c.options.MutableGlobals = append(c.options.MutableGlobals, globals...)
-	return c
+	opts := *c.options
+	opts.MutableGlobals = append(append([]string{}, c.options.MutableGlobals...), globals...)
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithUserdataTypes(types []string) *Compiler {
-	c.options.UserdataTypes = append(c.options.UserdataTypes, types...)
-	return c
+	opts := *c.options
+	opts.UserdataTypes = append(append([]string{}, c.options.UserdataTypes...), types...)
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithConstantLibraries(libs []string) *Compiler {
-	c.options.LibrariesWithKnownMembers = append(c.options.LibrariesWithKnownMembers, libs...)
-	return c
+	opts := *c.options
+	opts.LibrariesWithKnownMembers = append(append([]string{}, c.options.LibrariesWithKnownMembers...), libs...)
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) WithDisabledBuiltins(builtins []string) *Compiler {
-	c.options.DisabledBuiltins = append(c.options.DisabledBuiltins, builtins...)
-	return c
+	opts := *c.options
+	opts.DisabledBuiltins = append(append([]string{}, c.options.DisabledBuiltins...), builtins...)
+	return &Compiler{options: &opts}
 }
 
 func (c *Compiler) Compile(source string) ([]byte, error) {
