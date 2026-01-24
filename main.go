@@ -90,7 +90,7 @@ func main() {
 
 	class := &Class{value: 420.0}
 	classUd := state.CreateUserData(class)
-	state.SetGlobal("classUd", &classUd)
+	state.SetGlobal("classUd", classUd)
 
 	got := state.GetGlobal("classUd").(*lua.LuaUserData).Downcast()
 	fmt.Println(got.(*Class).value)

@@ -94,7 +94,7 @@ func (l *Lua) CreateFunction(fn GoFunction) *LuaChunk {
 	return c
 }
 
-func (l *Lua) CreateUserData(value IntoUserData) LuaUserData {
+func (l *Lua) CreateUserData(value IntoUserData) *LuaUserData {
 	state := l.state()
 	userdata := &LuaUserData{vm: l, inner: value}
 
@@ -131,7 +131,7 @@ func (l *Lua) CreateUserData(value IntoUserData) LuaUserData {
 	ffi.SetMetatable(state, -2)
 
 	userdata.index = int(ffi.Ref(state, -1))
-	return *userdata
+	return userdata
 }
 
 func (l *Lua) SetCompiler(compiler *Compiler) {
