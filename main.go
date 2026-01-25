@@ -9,7 +9,7 @@ import (
 func main() {
 	mem := lua.NewMemoryState()
 	// mem.SetLimit(250 * 1024) // 250KB max
-	state := lua.NewWith(lua.StdLibALLSAFE, lua.LuaOptions{InitMemoryState: mem, CatchPanics: true})
+	state := lua.NewWith(lua.StdLibALLSAFE, lua.LuaOptions{InitMemoryState: mem, CatchPanics: true, EnableCodegen: true})
 
 	table := state.CreateTable()
 	key, value := state.CreateString("hello"), state.CreateString("lei")

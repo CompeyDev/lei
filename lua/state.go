@@ -13,13 +13,15 @@ type LuaOptions struct {
 	CollectGarbage  bool
 	IsSafe          bool
 	CatchPanics     bool
+	EnableCodegen   bool
 	Compiler        *Compiler
 }
 
 type Lua struct {
-	inner      *StateWithMemory
-	compiler   *Compiler
-	fnRegistry *functionRegistry
+	inner          *StateWithMemory
+	compiler       *Compiler
+	fnRegistry     *functionRegistry
+	codegenEnabled bool
 }
 
 func (l *Lua) Load(name string, input []byte) (*LuaChunk, error) {
@@ -38,6 +40,19 @@ func (l *Lua) Load(name string, input []byte) (*LuaChunk, error) {
 
 func (l *Lua) Memory() *MemoryState {
 	return l.inner.MemState()
+}
+
+func (l *Lua) SetCodegen(enabled bool) bool {
+	// NOTE: disabling codegen if it was enabled before still has the codegen
+	// backend enabled for the state since we already called LuauCodegenCreate
+	// during state initialization
+
+	supported := ffi.LuauCodegenSupported()
+	if supported {
+		l.codegenEnabled = enabled
+	}
+
+	return supported
 }
 
 func (l *Lua) GetGlobal(global string) LuaValue {
@@ -151,6 +166,7 @@ func New() *Lua {
 		CollectGarbage: true,
 		IsSafe:         true,
 		CatchPanics:    true,
+		EnableCodegen:  true,
 		Compiler:       DefaultCompiler(),
 	})
 }
@@ -205,7 +221,12 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 	fnReg := newFunctionRegistry()
 	fnReg.recoverPanics = options.CatchPanics
 
-	lua := &Lua{inner: state, compiler: compiler, fnRegistry: fnReg}
+	lua := &Lua{inner: state, compiler: compiler, fnRegistry: fnReg, codegenEnabled: false}
+	if options.EnableCodegen && ffi.LuauCodegenSupported() {
+		ffi.LuauCodegenCreate(state.luaState)
+		lua.codegenEnabled = true
+	}
+
 	runtime.SetFinalizer(lua, func(l *Lua) {
 		if options.CollectGarbage {
 			ffi.LuaGc(l.state(), ffi.LUA_GCCOLLECT, 0)

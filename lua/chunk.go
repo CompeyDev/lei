@@ -25,6 +25,11 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 			// Miscellaneous error is denoted with a -1 code
 			return nil, &LuaError{Code: -1, Message: ffi.ToLString(state, -1, nil)}
 		}
+
+		// Apply native code generation if requested
+		if ffi.LuauCodegenSupported() && c.vm.codegenEnabled {
+			ffi.LuauCodegenCompile(state, -1)
+		}
 	} else {
 		// Push function onto the stack
 		ffi.GetRef(state, int32(c.index))
