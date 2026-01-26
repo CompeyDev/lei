@@ -7,31 +7,31 @@ type StdLib uint32
 
 const (
 	// COROUTINE library
-	// https://www.lua.org/manual/5.4/manual.html#6.2
+	// https://luau.org/library#coroutine-library
 	StdLibCOROUTINE StdLib = 1 << 0
 
 	// TABLE library
-	// https://www.lua.org/manual/5.4/manual.html#6.6
+	// https://luau.org/library#table-library
 	StdLibTABLE StdLib = 1 << 1
 
 	// OS library
-	// https://www.lua.org/manual/5.4/manual.html#6.9
+	// https://luau.org/library#os-library
 	StdLibOS StdLib = 1 << 3
 
 	// STRING library
-	// https://www.lua.org/manual/5.4/manual.html#6.4
+	// https://luau.org/library#string-library
 	StdLibSTRING StdLib = 1 << 4
 
 	// UTF8 library
-	// https://www.lua.org/manual/5.4/manual.html#6.5
+	// https://luau.org/library#utf8-library
 	StdLibUTF8 StdLib = 1 << 5
 
 	// BIT library
-	// https://www.lua.org/manual/5.2/manual.html#6.7
+	// https://luau.org/library#bit32-library
 	StdLibBIT StdLib = 1 << 6
 
 	// MATH library
-	// https://www.lua.org/manual/5.4/manual.html#6.7
+	// https://luau.org/library#math-library
 	StdLibMATH StdLib = 1 << 7
 
 	// BUFFER library (Luau)
@@ -43,7 +43,7 @@ const (
 	StdLibVECTOR StdLib = 1 << 10
 
 	// DEBUG library (unsafe)
-	// https://www.lua.org/manual/5.4/manual.html#6.10
+	// https://luau.org/library#debug-library
 	StdLibDEBUG StdLib = 1 << 31
 
 	// StdLibNONE represents no libraries
