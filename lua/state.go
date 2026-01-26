@@ -177,34 +177,23 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		panic("Failed to create Lua state")
 	}
 
-	ffi.RequireLib(state.luaState, "_G", unsafe.Pointer(ffi.BaseOpener()), true)
-	ffi.Pop(state.luaState, 1)
-
-	// TODO: luau jit stuff
-
-	type Library struct {
-		lib  StdLib
-		name string
+	ffi.OpenBase(state.luaState)
+	luaLibs := map[StdLib]func(*ffi.LuaState){
+		StdLibCOROUTINE: ffi.OpenCoroutine,
+		StdLibTABLE:     ffi.OpenTable,
+		StdLibOS:        ffi.OpenOs,
+		StdLibSTRING:    ffi.OpenString,
+		StdLibUTF8:      ffi.OpenUtf8,
+		StdLibBIT:       ffi.OpenBit32,
+		StdLibBUFFER:    ffi.OpenBuffer,
+		StdLibMATH:      ffi.OpenMath,
+		StdLibDEBUG:     ffi.OpenDebug,
+		StdLibVECTOR:    ffi.OpenVector,
 	}
 
-	luaLibs := map[Library]unsafe.Pointer{
-		{StdLibCOROUTINE, ffi.LUA_COLIBNAME}:  unsafe.Pointer(ffi.CoroutineOpener()),
-		{StdLibTABLE, ffi.LUA_TABLIBNAME}:     unsafe.Pointer(ffi.TableOpener()),
-		{StdLibOS, ffi.LUA_OSLIBNAME}:         unsafe.Pointer(ffi.OsOpener()),
-		{StdLibSTRING, ffi.LUA_STRLIBNAME}:    unsafe.Pointer(ffi.StringOpener()),
-		{StdLibUTF8, ffi.LUA_UTF8LIBNAME}:     unsafe.Pointer(ffi.Utf8Opener()),
-		{StdLibBIT, ffi.LUA_BITLIBNAME}:       unsafe.Pointer(ffi.Bit32Opener()),
-		{StdLibBUFFER, ffi.LUA_BUFFERLIBNAME}: unsafe.Pointer(ffi.BufferOpener()),
-		// TODO: vector lib
-		{StdLibMATH, ffi.LUA_MATHLIBNAME}: unsafe.Pointer(ffi.MathOpener()),
-		{StdLibBUFFER, ffi.LUA_DBLIBNAME}: unsafe.Pointer(ffi.DebugOpener()),
-	}
-
-	for library, open := range luaLibs {
-		// FIXME: check safety here maybe?
-
-		if libs.Contains(library.lib) {
-			ffi.RequireLib(state.luaState, library.name, unsafe.Pointer(open), true)
+	for library, opener := range luaLibs {
+		if (!options.IsSafe || StdLibALLSAFE.Contains(library)) && libs.Contains(library) {
+			opener(state.luaState)
 		}
 	}
 

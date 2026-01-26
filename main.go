@@ -18,7 +18,7 @@ func main() {
 	fmt.Printf("Used: %d, Limit: %d\n", mem.Used(), mem.Limit())
 
 	fmt.Println(key.ToString(), table.Get(key).(*lua.LuaString).ToString())
-	chunk, err := state.Load("main", []byte("print('hello, lei!!!!'); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
+	chunk, err := state.Load("main", []byte("print('hello, lei!!!!', math.random()); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
 	if err != nil {
 		fmt.Println(err)
 		return

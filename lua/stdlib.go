@@ -1,5 +1,7 @@
 package lua
 
+import "github.com/CompeyDev/lei/ffi"
+
 // StdLib represents flags describing the set of Lua standard libraries to load.
 type StdLib uint32
 
@@ -92,16 +94,16 @@ func (s StdLib) String() string {
 
 	var libs []string
 	flags := map[StdLib]string{
-		StdLibCOROUTINE: "COROUTINE",
-		StdLibTABLE:     "TABLE",
-		StdLibOS:        "OS",
-		StdLibSTRING:    "STRING",
-		StdLibUTF8:      "UTF8",
-		StdLibBIT:       "BIT",
-		StdLibMATH:      "MATH",
-		StdLibBUFFER:    "BUFFER",
-		StdLibVECTOR:    "VECTOR",
-		StdLibDEBUG:     "DEBUG",
+		StdLibCOROUTINE: ffi.LUA_COLIBNAME,
+		StdLibTABLE:     ffi.LUA_TABLIBNAME,
+		StdLibOS:        ffi.LUA_OSLIBNAME,
+		StdLibSTRING:    ffi.LUA_STRLIBNAME,
+		StdLibUTF8:      ffi.LUA_UTF8LIBNAME,
+		StdLibBIT:       ffi.LUA_BITLIBNAME,
+		StdLibMATH:      ffi.LUA_MATHLIBNAME,
+		StdLibBUFFER:    ffi.LUA_BUFFERLIBNAME,
+		StdLibVECTOR:    ffi.LUA_VECLIBNAME,
+		StdLibDEBUG:     ffi.LUA_VECLIBNAME,
 	}
 
 	for flag, name := range flags {
