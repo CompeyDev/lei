@@ -14,6 +14,7 @@ type LuaOptions struct {
 	IsSafe          bool
 	CatchPanics     bool
 	EnableCodegen   bool
+	EnableSandbox   bool
 	Compiler        *Compiler
 }
 
@@ -195,6 +196,10 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		if (!options.IsSafe || StdLibALLSAFE.Contains(library)) && libs.Contains(library) {
 			opener(state.luaState)
 		}
+	}
+
+	if options.EnableSandbox {
+		ffi.LSandbox(state.luaState)
 	}
 
 	compiler := options.Compiler
