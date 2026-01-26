@@ -82,6 +82,8 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 
 		case reflect.Struct:
 			res := reflect.New(t).Elem()
+			fieldSet := make(map[int]bool)
+
 			for key, value := range val.Iterable() {
 				keyStr, ok := key.(*LuaString)
 				if !ok {
@@ -91,6 +93,8 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 				luaKey := keyStr.ToString()
 				var field reflect.Value
 				var found bool
+				var priority int // 0 = explicit annotation, 1 = direct match, 2 = lowercase fallback
+				var fieldIndex int
 
 				for i := 0; i < t.NumField(); i++ {
 					// Annotation-based field name overrides (eg: `lua:"field_name"`)
@@ -98,36 +102,49 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 					tagVal, ok := structField.Tag.Lookup("lua")
 					if ok && tagVal == luaKey {
 						field = res.Field(i)
-						found = true
+						found, priority = true, 0
+						fieldIndex = i
 						break
 					}
 
 					// Exact matches
 					if structField.Name == luaKey {
-						field = res.Field(i)
-						found = true
-						break
+						if !found || priority > 1 {
+							field = res.Field(i)
+							found, priority = true, 1
+							fieldIndex = i
+						}
+						continue
 					}
 
 					// If field is exported, try also using lowercase first character
 					if name := structField.Name; structField.IsExported() {
 						lower := strings.ToLower(name[:1]) + name[1:]
 						if lower == luaKey {
-							field = res.Field(i)
-							found = true
-							break
+							if !found || priority > 2 {
+								field = res.Field(i)
+								found, priority = true, 2
+								fieldIndex = i
+							}
 						}
 					}
 				}
 
 				if found && field.IsValid() && field.CanSet() {
-					// Recursively convert value to a reflect value
-					vVal, err := asReflectValue(value, field.Type())
-					if err != nil {
-						return zero, err
-					}
+					// We keep track of whether the field has been found, its priority, and the
+					// index at which it was found within the struct. If there is an explicit
+					// annotation, we set the field value directly, otherwise we check that
+					// the field hasn't already been set in another match, and only set it then
+					if !fieldSet[fieldIndex] || priority == 0 {
+						// Recursively convert value to a reflect value
+						vVal, err := asReflectValue(value, field.Type())
+						if err != nil {
+							return zero, err
+						}
 
-					field.Set(vVal)
+						field.Set(vVal)
+						fieldSet[fieldIndex] = true
+					}
 				}
 			}
 
