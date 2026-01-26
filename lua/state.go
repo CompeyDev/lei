@@ -172,10 +172,6 @@ func New() *Lua {
 }
 
 func NewWith(libs StdLib, options LuaOptions) *Lua {
-	if libs.Contains(StdLibPACKAGE) {
-		// TODO: disable c modules for package lib
-	}
-
 	state := newStateWithAllocator(options.InitMemoryState)
 	if state == nil {
 		panic("Failed to create Lua state")
@@ -202,7 +198,6 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 		// TODO: vector lib
 		{StdLibMATH, ffi.LUA_MATHLIBNAME}: unsafe.Pointer(ffi.MathOpener()),
 		{StdLibBUFFER, ffi.LUA_DBLIBNAME}: unsafe.Pointer(ffi.DebugOpener()),
-		// TODO: package lib
 	}
 
 	for library, open := range luaLibs {

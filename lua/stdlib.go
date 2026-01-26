@@ -32,10 +32,6 @@ const (
 	// https://www.lua.org/manual/5.4/manual.html#6.7
 	StdLibMATH StdLib = 1 << 7
 
-	// PACKAGE library
-	// https://www.lua.org/manual/5.4/manual.html#6.3
-	StdLibPACKAGE StdLib = 1 << 8
-
 	// BUFFER library (Luau)
 	// https://luau.org/library#buffer-library
 	StdLibBUFFER StdLib = 1 << 9
@@ -103,7 +99,6 @@ func (s StdLib) String() string {
 		StdLibUTF8:      "UTF8",
 		StdLibBIT:       "BIT",
 		StdLibMATH:      "MATH",
-		StdLibPACKAGE:   "PACKAGE",
 		StdLibBUFFER:    "BUFFER",
 		StdLibVECTOR:    "VECTOR",
 		StdLibDEBUG:     "DEBUG",
