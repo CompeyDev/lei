@@ -115,6 +115,32 @@ func main() {
 	}
 
 	fmt.Println(vectorReturn[0].(*lua.LuaVector))
+
+	bufChunk, bufChunkErr := state.Load(
+		"bufChunk",
+		[]byte(
+			`local str = buffer.readstring(b, 0, 5)
+			 print(str)
+			 buffer.writestring(b, 4, "lei")`,
+		),
+	)
+
+	if bufChunkErr != nil {
+		fmt.Println(bufChunkErr)
+		return
+	}
+
+	buf := state.CreateBuffer(10)
+	buf.Write(0, []byte("hello"))
+	state.SetGlobal("b", buf)
+
+	_, bufErr := bufChunk.Call()
+	if bufErr != nil {
+		fmt.Println(bufErr)
+		return
+	}
+
+	fmt.Println(string(buf.Read(4, 3)))
 }
 
 type Class struct{ value float64 }

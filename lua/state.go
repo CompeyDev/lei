@@ -152,6 +152,18 @@ func (l *Lua) CreateUserData(value IntoUserData) *LuaUserData {
 	return userdata
 }
 
+func (l *Lua) CreateBuffer(size uint64) *LuaBuffer {
+	state := l.state()
+
+	ffi.NewBuffer(state, size)
+	index := ffi.Ref(state, -1)
+
+	b := &LuaBuffer{vm: l, index: int(index), size: size}
+	runtime.SetFinalizer(b, valueUnrefer[*LuaBuffer](l))
+
+	return b
+}
+
 func (l *Lua) SetCompiler(compiler *Compiler) {
 	l.compiler = compiler
 }

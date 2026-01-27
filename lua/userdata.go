@@ -48,7 +48,9 @@ func (ud *LuaUserData) Downcast() IntoUserData {
 	}
 }
 
+//
 // LuaValue implementation
+//
 
 var _ LuaValue = (*LuaUserData)(nil)
 
