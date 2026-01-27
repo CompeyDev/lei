@@ -190,7 +190,7 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 		return &LuaUserData{vm: lua, index: int(ref)}
 	case ffi.LUA_TVECTOR:
 		x, y, z := ffi.ToVector(state, index)
-		if x != nil || y != nil || z != nil {
+		if x != nil && y != nil && z != nil {
 			return &LuaVector{*x, *y, *z}
 		}
 
