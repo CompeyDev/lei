@@ -440,6 +440,10 @@ func PushLightUserdataTagged(L *LuaState, p unsafe.Pointer, tag int32) {
 	C.lua_pushlightuserdatatagged(L, p, C.int(tag))
 }
 
+func PushVector(L *LuaState, x, y, z float32) {
+	C.lua_pushvector(L, C.float(x), C.float(y), C.float(z))
+}
+
 func NewUserdataTagged(L *LuaState, sz uint64, tag int32) unsafe.Pointer {
 	return C.lua_newuserdatatagged(L, C.size_t(sz), C.int(tag))
 }
