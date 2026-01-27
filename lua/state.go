@@ -147,6 +147,8 @@ func (l *Lua) CreateUserData(value IntoUserData) *LuaUserData {
 	ffi.SetMetatable(state, -2)
 
 	userdata.index = int(ffi.Ref(state, -1))
+	runtime.SetFinalizer(userdata, valueUnrefer[*LuaUserData](l))
+
 	return userdata
 }
 
