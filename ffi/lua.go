@@ -290,8 +290,21 @@ func ToUnsignedX(L *LuaState, idx int32, isnum *bool) LuaUnsigned {
 	return unsigned
 }
 
-func ToVector(L *LuaState, idx int32) {
-	C.lua_tovector(L, C.int(idx))
+// DIVERGENCE: We cannot cast and reinterpret the C owned vector returned as
+// a Go value, as it breaks cgo pointer rules. Instead, we allocate new Go
+// owned floats on the heap and only read the floats returned by C
+
+func ToVector(L *C.lua_State, idx int32) (x, y, z *float32) {
+	vec := C.lua_tovector(L, C.int(idx))
+	if vec == nil {
+		return nil, nil, nil
+	}
+
+	v := (*[3]C.float)(unsafe.Pointer(vec))
+	x, y, z = new(float32), new(float32), new(float32)
+	*x, *y, *z = float32(v[0]), float32(v[1]), float32(v[2])
+
+	return
 }
 
 func ToBoolean(L *LuaState, idx int32) bool {
