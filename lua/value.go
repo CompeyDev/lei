@@ -161,6 +161,9 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 		}
 
 		return zero, fmt.Errorf("value isn't userdata")
+
+	case *LuaVector:
+		return reflect.ValueOf(v), nil
 	}
 
 	return zero, fmt.Errorf("cannot convert LuaValue(%T) into %T", v, zero)
@@ -185,6 +188,13 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 	case ffi.LUA_TUSERDATA:
 		ref := ffi.Ref(state, index)
 		return &LuaUserData{vm: lua, index: int(ref)}
+	case ffi.LUA_TVECTOR:
+		x, y, z := ffi.ToVector(state, index)
+		if x != nil || y != nil || z != nil {
+			return &LuaVector{*x, *y, *z}
+		}
+
+		return nil
 	default:
 		panic("unsupported Lua type")
 	}

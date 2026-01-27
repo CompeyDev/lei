@@ -93,19 +93,28 @@ func main() {
 	state.SetGlobal("classUd", classUd)
 
 	got := state.GetGlobal("classUd").(*lua.LuaUserData).Downcast()
-	fmt.Println(got.(*Class).value)
+	fmt.Println("got:", got.(*Class).value)
 
-	udChunk, udErr := state.Load("udChunk", []byte("print(tostring(classUd), classUd.toggle); classUd.flip(); print(classUd.toggle, classUd.fakeToggle)"))
+	conv, err := lua.As[*Class](classUd)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("with as:", *conv)
+
+	udChunk, udErr := state.Load("udChunk", []byte("print(tostring(classUd), classUd.toggle); classUd.flip(); print(classUd.toggle, classUd.fakeToggle); return vector.one"))
 	if udErr != nil {
 		fmt.Println(udErr)
 		return
 	}
 
-	_, udCallErr := udChunk.Call()
+	vectorReturn, udCallErr := udChunk.Call()
 	if udCallErr != nil {
 		fmt.Println(udCallErr)
 		return
 	}
+
+	fmt.Println(vectorReturn[0].(*lua.LuaVector))
 }
 
 type Class struct{ value float64 }
