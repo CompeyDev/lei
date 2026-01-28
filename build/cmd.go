@@ -3,8 +3,10 @@ package main
 import (
 	"bytes"
 	"io"
+	"log"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 type CommandPipeMode int
@@ -127,17 +129,23 @@ func pipeModeToWriter(mode CommandPipeMode, def io.Writer) io.Writer {
 	}
 }
 
-func Exec(name string, dir string, args ...string) {
-	cmd, _, _, _ := Command(name).WithArgs(args...).Dir(dir).PipeAll(Forward).ToCommand()
-	startErr := cmd.Start()
-	if startErr != nil {
-		panic(startErr)
+func Exec(exe string, args ...string) {
+	cmd, _, _, _ := Command(exe).
+		WithArgs(args...).
+		WithVar("CLICOLOR_FORCE", "1").
+		PipeAll(Forward).
+		ToCommand()
+
+	if err := cmd.Start(); err != nil {
+		log.Fatalf("Failed to start command %s: %v", exe, err)
 	}
 
-	cmdErr := cmd.Wait()
-	if cmdErr != nil {
-		panic(cmdErr)
-		// err := cmdErr.(*exec.ExitError)
-		// os.Exit(err.ExitCode())
+	if err := cmd.Wait(); err != nil {
+		if exitErr, ok := err.(*exec.ExitError); ok {
+			commandStr := strings.Join(append([]string{exe}, args...), " ")
+			log.Fatalf("'%s' exited with %d", commandStr, exitErr.ExitCode())
+		}
+
+		log.Fatalf("%s command failed: %v", exe, err)
 	}
 }
