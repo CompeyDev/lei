@@ -17,24 +17,11 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 	state := c.vm.state()
 
 	initialStack := ffi.GetTop(state) // Track initial stack size
+	c.pushToStack()
 
 	argsCount := len(args)
-	if c.bytecode != nil {
-		hasLoaded := ffi.LuauLoad(state, c.name, c.bytecode, uint64(len(c.bytecode)), 0)
-		if !hasLoaded {
-			// Miscellaneous error is denoted with a -1 code
-			return nil, &LuaError{Code: -1, Message: ffi.ToLString(state, -1, nil)}
-		}
-
-		// Apply native code generation if requested
-		if ffi.LuauCodegenSupported() && c.vm.codegenEnabled {
-			ffi.LuauCodegenCompile(state, -1)
-		}
-	} else {
-		// Push function onto the stack
-		ffi.GetRef(state, int32(c.index))
-
-		// Push the length and the arguments onto the stack (deref)
+	if c.bytecode == nil {
+		// Chunk is a C function, push length and args
 		ffi.PushNumber(state, ffi.LuaNumber(argsCount))
 		argsCount++
 		for _, arg := range args {
@@ -65,4 +52,27 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 	}
 
 	return results, nil
+}
+
+func (c *LuaChunk) pushToStack() error {
+	state := c.vm.state()
+
+	if c.bytecode == nil {
+		// Chunk is of a C function, need to deref
+		ffi.GetRef(state, int32(c.index))
+	} else {
+		// Chunk is bytecode, load it into the VM
+		hasLoaded := ffi.LuauLoad(state, c.name, c.bytecode, uint64(len(c.bytecode)), 0)
+		if !hasLoaded {
+			// Miscellaneous error is denoted with a -1 code
+			return &LuaError{Code: -1, Message: ffi.ToLString(state, -1, nil)}
+		}
+
+		// Apply native code generation if requested
+		if ffi.LuauCodegenSupported() && c.vm.codegenEnabled {
+			ffi.LuauCodegenCompile(state, -1)
+		}
+	}
+
+	return nil
 }

@@ -144,6 +144,46 @@ func main() {
 
 	bufArr, err := lua.As[[4]uint8](buf)
 	fmt.Println("rapidly approaching", string(bufArr[:]))
+
+	thread, threadErr := state.CreateThread(state.CreateFunction(func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+		returns := []lua.LuaValue{
+			luaState.CreateString("Hello"),
+			luaState.CreateString("thread"),
+		}
+
+		if len(args) != 0 {
+			returns = append(returns, args[0])
+		} else {
+			fmt.Println("No args for coroutine!")
+		}
+
+		return returns, nil
+	}))
+
+	if threadErr != nil {
+		fmt.Println(threadErr)
+		return
+	}
+
+	resultsA, errA := thread.Resume()
+	resultsB, errB := thread.ResumeWith(state.CreateString("B!"))
+
+	if errA != nil || errB != nil {
+		fmt.Println("Either thread resume failed")
+		fmt.Println("A:", errA)
+		fmt.Println("B:", errB)
+		return
+	}
+
+	for _, result := range resultsA {
+		fmt.Println("Thread A =>", result.(*lua.LuaString).ToString())
+	}
+
+	fmt.Println()
+
+	for _, result := range resultsB {
+		fmt.Println("Thread B =>", result.(*lua.LuaString).ToString())
+	}
 }
 
 type Class struct{ value float64 }

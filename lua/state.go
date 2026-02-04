@@ -164,6 +164,24 @@ func (l *Lua) CreateBuffer(size uint64) *LuaBuffer {
 	return b
 }
 
+func (l *Lua) CreateThread(chunk *LuaChunk) (*LuaThread, error) {
+	mainState := l.state()
+	threadState := ffi.NewThread(mainState)
+
+	chunk.pushToStack()
+	ffi.XMove(mainState, threadState, 1)
+
+	index := ffi.Ref(mainState, -1)
+	t := &LuaThread{vm: l, chunk: chunk, index: int(index)}
+
+	runtime.SetFinalizer(t, func(t *LuaThread) {
+		ffi.LuaClose(t.State())
+		ffi.Unref(l.state(), int32(t.ref()))
+	})
+
+	return t, nil
+}
+
 func (l *Lua) SetCompiler(compiler *Compiler) {
 	l.compiler = compiler
 }
