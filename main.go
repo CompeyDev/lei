@@ -141,6 +141,9 @@ func main() {
 	}
 
 	fmt.Println(string(buf.Read(4, 3)))
+
+	bufArr, err := lua.As[[4]uint8](buf)
+	fmt.Println("rapidly approaching", string(bufArr[:]))
 }
 
 type Class struct{ value float64 }

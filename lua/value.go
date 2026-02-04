@@ -164,6 +164,16 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 
 	case *LuaVector:
 		return reflect.ValueOf(v), nil
+
+	case *LuaBuffer:
+		kind := t.Kind()
+		if kind == reflect.Array {
+			return reflect.ValueOf(val.Read(0, uint64(t.Len()))).Convert(t), nil
+		}
+
+		if kind == reflect.Slice {
+			return reflect.ValueOf(val.Read(0, val.size)).Convert(t), nil
+		}
 	}
 
 	return zero, fmt.Errorf("cannot convert LuaValue(%T) into %T", v, zero)
@@ -191,6 +201,9 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 	case ffi.LUA_TVECTOR:
 		x, y, z := ffi.ToVector(state, index)
 		return &LuaVector{*x, *y, *z}
+	case ffi.LUA_TBUFFER:
+		ref := ffi.Ref(state, index)
+		return &LuaBuffer{vm: lua, index: int(ref), size: ffi.ObjLen(state, ref)}
 	default:
 		panic("unsupported Lua type")
 	}
