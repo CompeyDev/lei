@@ -35,7 +35,16 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 
 	switch val := v.(type) {
 	case *LuaNumber:
-		if t.Kind() == reflect.Float64 {
+		// Map of all numeric types for O(1) lookup
+		var numericKinds = map[reflect.Kind]bool{
+			reflect.Int: true, reflect.Int8: true, reflect.Int16: true, reflect.Int32: true, reflect.Int64: true,
+			reflect.Uint: true, reflect.Uint8: true, reflect.Uint16: true, reflect.Uint32: true, reflect.Uint64: true,
+			reflect.Uintptr: true,
+			reflect.Float32: true, reflect.Float64: true,
+			reflect.Complex64: true, reflect.Complex128: true,
+		}
+
+		if kind := t.Kind(); numericKinds[kind] {
 			num := reflect.ValueOf(*val).Convert(t)
 			return num, nil
 		}
@@ -176,7 +185,7 @@ func asReflectValue(v LuaValue, t reflect.Type) (reflect.Value, error) {
 		}
 	}
 
-	return zero, fmt.Errorf("cannot convert LuaValue(%T) into %T", v, zero)
+	return zero, fmt.Errorf("cannot convert LuaValue(%T) into %T", v, zero.Type().Name())
 }
 
 func intoLuaValue(lua *Lua, index int32) LuaValue {
