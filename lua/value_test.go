@@ -31,19 +31,19 @@ func TestAs(t *testing.T) {
 	// 2. Exact field name match
 	t.Run("Exact match", func(t *testing.T) {
 		type Person struct {
-			Age string // TODO: make this int once we have numbers
+			Age int
 		}
 
 		table := state.CreateTable()
-		table.Set(state.CreateString("Age"), state.CreateString("30"))
+		table.Set(state.CreateString("Age"), lua.LuaNumber(30))
 
 		res, err := lua.As[Person](table)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if res.Age != "30" {
-			t.Fatalf("expected '30', got %v", res.Age)
+		if res.Age != 30 {
+			t.Fatalf("expected 30, got %v", res.Age)
 		}
 	})
 
@@ -85,13 +85,13 @@ func TestAs(t *testing.T) {
 	t.Run("Mixed fields", func(t *testing.T) {
 		type Person struct {
 			Name  string `lua:"username"`
-			Age   string // TODO: use int once LuaNumber is implemented
+			Age   int
 			Email string
 		}
 
 		table := state.CreateTable()
 		table.Set(state.CreateString("username"), state.CreateString("Bob"))
-		table.Set(state.CreateString("Age"), state.CreateString("25"))
+		table.Set(state.CreateString("Age"), lua.LuaNumber(25))
 		table.Set(state.CreateString("email"), state.CreateString("bobby@example.com"))
 
 		res, err := lua.As[Person](table)
@@ -99,7 +99,7 @@ func TestAs(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if res.Name != "Bob" || res.Age != "25" || res.Email != "bobby@example.com" {
+		if res.Name != "Bob" || res.Age != 25 || res.Email != "bobby@example.com" {
 			t.Fatalf("unexpected result: %+v", res)
 		}
 	})
