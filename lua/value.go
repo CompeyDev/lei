@@ -213,6 +213,9 @@ func intoLuaValue(lua *Lua, index int32) LuaValue {
 	case ffi.LUA_TBUFFER:
 		ref := ffi.Ref(state, index)
 		return &LuaBuffer{vm: lua, index: int(ref), size: ffi.ObjLen(state, ref)}
+	case ffi.LUA_TTHREAD:
+		ref := ffi.Ref(state, index)
+		return &LuaThread{vm: lua, index: int(ref)} // NOTE: no chunk, can only be executed once
 	default:
 		panic("unsupported Lua type")
 	}

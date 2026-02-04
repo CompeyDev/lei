@@ -71,7 +71,7 @@ func (t *LuaThread) collectResults(threadState *ffi.LuaState, status int) ([]Lua
 }
 
 func (t *LuaThread) pushMainFunction() {
-	if threadState := t.State(); t.Status() == ffi.LUA_OK {
+	if threadState := t.State(); t.Status() == ffi.LUA_OK && t.chunk != nil {
 		// Reset the thread and push the coroutine function if the thread has
 		// finished running and returned a non-resumable state
 		ffi.ResetThread(threadState)
