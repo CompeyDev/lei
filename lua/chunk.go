@@ -41,7 +41,6 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 		return nil, nil
 	}
 
-	// TODO: contemplate whether to return LuaValues or go values
 	results := make([]LuaValue, resultsCount)
 	for i := range resultsCount {
 		// The stack has grown by the number of returns of the chunk from the
