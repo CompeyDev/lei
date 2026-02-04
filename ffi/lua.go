@@ -592,23 +592,23 @@ func Pcall(L *LuaState, nargs int32, nresults int32, errfunc int32) int32 {
 // ========================
 //
 
-func LuaYield(L *LuaState, nresults int32) int32 {
+func Yield(L *LuaState, nresults int32) int32 {
 	return int32(C.lua_yield(L, C.int(nresults)))
 }
 
-func LuaBreak(L *LuaState) int32 {
+func Break(L *LuaState) int32 {
 	return int32(C.lua_break(L))
 }
 
-func LuaResume(L *LuaState, from *LuaState, nargs int32) int32 {
+func Resume(L *LuaState, from *LuaState, nargs int32) int32 {
 	return int32(C.lua_resume(L, from, C.int(nargs)))
 }
 
-func LuaResumeError(L *LuaState, from *LuaState) int32 {
+func ResumeError(L *LuaState, from *LuaState) int32 {
 	return int32(C.lua_resumeerror(L, from))
 }
 
-func LuaStatus(L *LuaState) int32 {
+func Status(L *LuaState) int32 {
 	return int32(C.lua_status(L))
 }
 
