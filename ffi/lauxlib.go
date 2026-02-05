@@ -1,8 +1,10 @@
 package ffi
 
+//go:generate go run ../build buildProject Luau.VM
+
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/14.1.1/include
-#cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
+#cgo CFLAGS: -Iluau/VM/include
+#cgo LDFLAGS: -L_obj -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
@@ -66,8 +68,6 @@ func LArgError(L *LuaState, narg int32, extramsg string) {
 
 func LCheckLString(L *LuaState, narg int32, l *uint64) string {
 	p := C.luaL_checklstring(L, C.int(narg), (*C.size_t)(l))
-	defer C.free(unsafe.Pointer(p))
-
 	return C.GoString(p)
 }
 
@@ -76,8 +76,6 @@ func LOptLString(L *LuaState, narg int32, def string, l *uint64) string {
 	defer C.free(unsafe.Pointer(cdef))
 
 	p := C.luaL_optlstring(L, C.int(narg), cdef, (*C.ulong)(l))
-	defer C.free(unsafe.Pointer(p))
-
 	return C.GoString(p)
 }
 
@@ -238,31 +236,29 @@ func LOptString(L *LuaState, n int32, d string) string {
 }
 
 const (
-	LUA_COLIBNAME     = "coroutine"
-	LUA_TABLIBNAME    = "table"
-	LUA_OSLIBNAME     = "os"
-	LUA_STRLIBNAME    = "string"
-	LUA_BITLIBNAME    = "bit32"
-	LUA_BUFFERLIBNAME = "buffer"
-	LUA_UTF8LIBNAME   = "utf8"
-	LUA_MATHLIBNAME   = "math"
-	LUA_DBLIBNAME     = "debug"
+	LUA_COLIBNAME     = C.LUA_COLIBNAME
+	LUA_TABLIBNAME    = C.LUA_TABLIBNAME
+	LUA_OSLIBNAME     = C.LUA_OSLIBNAME
+	LUA_STRLIBNAME    = C.LUA_STRLIBNAME
+	LUA_BITLIBNAME    = C.LUA_BITLIBNAME
+	LUA_BUFFERLIBNAME = C.LUA_BUFFERLIBNAME
+	LUA_UTF8LIBNAME   = C.LUA_UTF8LIBNAME
+	LUA_MATHLIBNAME   = C.LUA_MATHLIBNAME
+	LUA_DBLIBNAME     = C.LUA_DBLIBNAME
+	LUA_VECLIBNAME    = C.LUA_VECLIBNAME
 )
 
-// DIVERGENCE: We cannot export wrapper functions around C functions if we want to
-// pass them to API functions, we preserve the real C pointer by having 'opener'
-// functions
-
-func CoroutineOpener() C.lua_CFunction { return C.lua_CFunction(C.luaopen_base) }
-func BaseOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_base) }
-func TableOpener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_table) }
-func OsOpener() C.lua_CFunction        { return C.lua_CFunction(C.luaopen_os) }
-func StringOpener() C.lua_CFunction    { return C.lua_CFunction(C.luaopen_string) }
-func Bit32Opener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_bit32) }
-func BufferOpener() C.lua_CFunction    { return C.lua_CFunction(C.luaopen_buffer) }
-func Utf8Opener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_utf8) }
-func MathOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaopen_math) }
-func DebugOpener() C.lua_CFunction     { return C.lua_CFunction(C.luaopen_debug) }
-func LibsOpener() C.lua_CFunction      { return C.lua_CFunction(C.luaL_openlibs) }
+func OpenBase(L *LuaState)      { C.luaopen_base(L) }
+func OpenCoroutine(L *LuaState) { C.luaopen_coroutine(L) }
+func OpenTable(L *LuaState)     { C.luaopen_table(L) }
+func OpenOs(L *LuaState)        { C.luaopen_os(L) }
+func OpenString(L *LuaState)    { C.luaopen_string(L) }
+func OpenBit32(L *LuaState)     { C.luaopen_bit32(L) }
+func OpenBuffer(L *LuaState)    { C.luaopen_buffer(L) }
+func OpenUtf8(L *LuaState)      { C.luaopen_utf8(L) }
+func OpenMath(L *LuaState)      { C.luaopen_math(L) }
+func OpenDebug(L *LuaState)     { C.luaopen_debug(L) }
+func OpenVector(L *LuaState)    { C.luaopen_vector(L) }
+func LOpenLibs(L *LuaState)     { C.luaL_openlibs(L) }
 
 // TODO: More utility functions, buffer bindings
