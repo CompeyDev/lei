@@ -175,7 +175,7 @@ func (l *Lua) CreateThread(chunk *LuaChunk) (*LuaThread, error) {
 	t := &LuaThread{vm: l, chunk: chunk, index: int(index)}
 
 	runtime.SetFinalizer(t, func(t *LuaThread) {
-		ffi.LuaClose(t.State())
+		ffi.LuaClose(t.state())
 		ffi.Unref(l.state(), int32(t.ref()))
 	})
 

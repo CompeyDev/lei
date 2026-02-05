@@ -8,17 +8,8 @@ type LuaThread struct {
 	index int
 }
 
-func (t *LuaThread) State() *ffi.LuaState {
-	state := t.vm.state()
-
-	t.deref(t.vm)
-	defer ffi.Pop(state, 1)
-
-	return ffi.ToThread(state, -1)
-}
-
 func (t *LuaThread) Resume() ([]LuaValue, error) {
-	threadState := t.State()
+	threadState := t.state()
 	t.pushMainFunction()
 
 	status := int(ffi.Resume(threadState, nil, 0))
@@ -27,7 +18,7 @@ func (t *LuaThread) Resume() ([]LuaValue, error) {
 
 func (t *LuaThread) ResumeWith(args ...LuaValue) ([]LuaValue, error) {
 	mainState := t.vm.state()
-	threadState := t.State()
+	threadState := t.state()
 
 	// Push the function if required
 	t.pushMainFunction()
@@ -43,6 +34,21 @@ func (t *LuaThread) ResumeWith(args ...LuaValue) ([]LuaValue, error) {
 
 	status := int(ffi.Resume(threadState, nil, int32(argsCount+1))) // +1 for count arg
 	return t.collectResults(threadState, status)
+}
+
+func (t *LuaThread) Status() int {
+	threadState := t.state()
+	return int(ffi.Status(threadState))
+}
+
+func (t *LuaThread) IsYielded() bool {
+	return t.Status() == ffi.LUA_YIELD
+}
+
+func (t *LuaThread) IsFinished() bool {
+	status := t.Status()
+	threadState := t.state()
+	return status == ffi.LUA_OK && ffi.GetTop(threadState) == 0
 }
 
 func (t *LuaThread) collectResults(threadState *ffi.LuaState, status int) ([]LuaValue, error) {
@@ -71,7 +77,7 @@ func (t *LuaThread) collectResults(threadState *ffi.LuaState, status int) ([]Lua
 }
 
 func (t *LuaThread) pushMainFunction() {
-	if threadState := t.State(); t.Status() == ffi.LUA_OK && t.chunk != nil {
+	if threadState := t.state(); t.Status() == ffi.LUA_OK && t.chunk != nil {
 		// Reset the thread and push the coroutine function if the thread has
 		// finished running and returned a non-resumable state
 		ffi.ResetThread(threadState)
@@ -80,19 +86,13 @@ func (t *LuaThread) pushMainFunction() {
 	}
 }
 
-func (t *LuaThread) Status() int {
-	threadState := t.State()
-	return int(ffi.Status(threadState))
-}
+func (t *LuaThread) state() *ffi.LuaState {
+	state := t.vm.state()
 
-func (t *LuaThread) IsYielded() bool {
-	return t.Status() == ffi.LUA_YIELD
-}
+	t.deref(t.vm)
+	defer ffi.Pop(state, 1)
 
-func (t *LuaThread) IsFinished() bool {
-	status := t.Status()
-	threadState := t.State()
-	return status == ffi.LUA_OK && ffi.GetTop(threadState) == 0
+	return ffi.ToThread(state, -1)
 }
 
 //
