@@ -7,7 +7,7 @@ import "github.com/CompeyDev/lei/ffi"
 type LuaChunk struct {
 	vm *Lua
 
-	name     string
+	name     *string
 	bytecode []byte
 
 	index int
@@ -61,7 +61,7 @@ func (c *LuaChunk) pushToStack() error {
 		ffi.GetRef(state, int32(c.index))
 	} else {
 		// Chunk is bytecode, load it into the VM
-		hasLoaded := ffi.LuauLoad(state, c.name, c.bytecode, uint64(len(c.bytecode)), 0)
+		hasLoaded := ffi.LuauLoad(state, *c.name, c.bytecode, uint64(len(c.bytecode)), 0)
 		if !hasLoaded {
 			// Miscellaneous error is denoted with a -1 code
 			return &LuaError{Code: -1, Message: ffi.ToLString(state, -1, nil)}

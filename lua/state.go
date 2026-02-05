@@ -26,7 +26,7 @@ type Lua struct {
 }
 
 func (l *Lua) Load(name string, input []byte) (*LuaChunk, error) {
-	chunk := &LuaChunk{vm: l, bytecode: input}
+	chunk := &LuaChunk{vm: l, bytecode: input, name: &name}
 	if !isBytecode(input) {
 		bytecode, err := l.compiler.Compile(string(input))
 		if err != nil {
@@ -95,16 +95,16 @@ func (l *Lua) CreateString(str string) *LuaString {
 	return s
 }
 
-func (l *Lua) CreateFunction(fn GoFunction) *LuaChunk {
+func (l *Lua) CreateFunction(name *string, fn GoFunction) *LuaChunk {
 	state := l.state()
 
 	entry := l.fnRegistry.register(fn)
 	pushUpvalue(state, entry, registryTrampolineDtor)
 
-	ffi.PushCClosureK(state, registryTrampoline, nil, 1, nil)
+	ffi.PushCClosureK(state, registryTrampoline, name, 1, nil)
 
 	index := ffi.Ref(state, -1)
-	c := &LuaChunk{vm: l, index: int(index)}
+	c := &LuaChunk{vm: l, index: int(index), name: name}
 	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
 
 	return c

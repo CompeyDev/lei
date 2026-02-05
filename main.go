@@ -62,7 +62,7 @@ func main() {
 		fmt.Printf("%s %s\n", k, v)
 	}
 
-	cFnChunk := state.CreateFunction(func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+	cFnChunk := state.CreateFunction(nil, func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
 		someNumber := lua.LuaNumber(22713)
 		return []lua.LuaValue{
 			luaState.CreateString("Hello"),
@@ -145,7 +145,7 @@ func main() {
 	bufArr, err := lua.As[[4]uint8](buf)
 	fmt.Println("rapidly approaching", string(bufArr[:]))
 
-	thread, threadErr := state.CreateThread(state.CreateFunction(func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
+	thread, threadErr := state.CreateThread(state.CreateFunction(nil, func(luaState *lua.Lua, args ...lua.LuaValue) ([]lua.LuaValue, error) {
 		returns := []lua.LuaValue{
 			luaState.CreateString("Hello"),
 			luaState.CreateString("thread"),
