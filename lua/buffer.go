@@ -12,6 +12,9 @@ type LuaBuffer struct {
 	size  uint64
 }
 
+func (b *LuaBuffer) Size() uint64  { return b.size }
+func (b *LuaBuffer) IsEmpty() bool { return b.size == 0 }
+
 func (b *LuaBuffer) Read(offset uint64, count uint64) []byte {
 	b.deref(b.vm)
 	defer ffi.Pop(b.vm.state(), 1)
