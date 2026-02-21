@@ -551,8 +551,8 @@ func SetMetatable(L *LuaState, objindex int32) int32 {
 	return int32(C.lua_setmetatable(L, C.int(objindex)))
 }
 
-func Setfenv(L *LuaState, idx int32) int32 {
-	return int32(C.lua_setfenv(L, C.int(idx)))
+func Setfenv(L *LuaState, idx int32) bool {
+	return C.lua_setfenv(L, C.int(idx)) == 0
 }
 
 //
