@@ -25,18 +25,19 @@ type Lua struct {
 	codegenEnabled bool
 }
 
-func (l *Lua) Load(name string, input []byte) (*LuaChunk, error) {
-	chunk := &LuaChunk{vm: l, bytecode: input, name: &name}
-	if !isBytecode(input) {
-		bytecode, err := l.compiler.Compile(string(input))
-		if err != nil {
-			return nil, err
-		}
-
-		chunk.bytecode = bytecode
+func (l *Lua) Load(name string, input []byte) *LuaChunk {
+	var mode ChunkMode = ChunkModeSOURCE
+	if isBytecode(input) {
+		mode = ChunkModeBYTECODE
 	}
 
-	return chunk, nil
+	return &LuaChunk{
+		vm:       l,
+		data:     input,
+		name:     &name,
+		mode:     mode,
+		compiler: l.compiler,
+	}
 }
 
 func (l *Lua) Memory() *MemoryState {
@@ -104,7 +105,7 @@ func (l *Lua) CreateFunction(name *string, fn GoFunction) *LuaChunk {
 	ffi.PushCClosureK(state, registryTrampoline, name, 1, nil)
 
 	index := ffi.Ref(state, -1)
-	c := &LuaChunk{vm: l, index: int(index), name: name}
+	c := &LuaChunk{vm: l, index: int(index), name: name, mode: ChunkModeFUNCTION}
 	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
 
 	return c

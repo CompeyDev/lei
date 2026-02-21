@@ -18,13 +18,9 @@ func main() {
 	fmt.Printf("Used: %d, Limit: %d\n", mem.Used(), mem.Limit())
 
 	fmt.Println(key.ToString(), table.Get(key).(*lua.LuaString).ToString())
-	chunk, err := state.Load("main", []byte("print('hello, lei!!!!', math.random()); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-
+	chunk := state.Load("main", []byte("print('hello, lei!!!!', math.random()); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
 	values, returnErr := chunk.Call()
+
 	if returnErr != nil {
 		fmt.Println(returnErr)
 		return
@@ -102,11 +98,7 @@ func main() {
 
 	fmt.Println("with as:", *conv)
 
-	udChunk, udErr := state.Load("udChunk", []byte("print(tostring(classUd), classUd.toggle); classUd.flip(); print(classUd.toggle, classUd.fakeToggle); return vector.one"))
-	if udErr != nil {
-		fmt.Println(udErr)
-		return
-	}
+	udChunk := state.Load("udChunk", []byte("print(tostring(classUd), classUd.toggle); classUd.flip(); print(classUd.toggle, classUd.fakeToggle); return vector.one"))
 
 	vectorReturn, udCallErr := udChunk.Call()
 	if udCallErr != nil {
@@ -116,7 +108,7 @@ func main() {
 
 	fmt.Println(vectorReturn[0].(*lua.LuaVector))
 
-	bufChunk, bufChunkErr := state.Load(
+	bufChunk := state.Load(
 		"bufChunk",
 		[]byte(
 			`local str = buffer.readstring(b, 0, 5)
@@ -124,11 +116,6 @@ func main() {
 			 buffer.writestring(b, 4, "lei")`,
 		),
 	)
-
-	if bufChunkErr != nil {
-		fmt.Println(bufChunkErr)
-		return
-	}
 
 	buf := state.CreateBuffer(10)
 	buf.Write(0, []byte("hello"))
