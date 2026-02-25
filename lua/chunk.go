@@ -6,7 +6,7 @@ type ChunkMode int
 
 const (
 	// Raw text source code that must be compiled before executing
-	ChunkModeSOURCE = iota
+	ChunkModeSOURCE ChunkMode = iota
 
 	// Compiled bytecode that can be directly executed
 	ChunkModeBYTECODE
