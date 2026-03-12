@@ -514,8 +514,8 @@ func SetSafeEnv(L *LuaState, idx int32, enabled bool) {
 	C.lua_setsafeenv(L, C.int(idx), cenabled)
 }
 
-func GetMetatable(L *LuaState, objindex int32) int32 {
-	return int32(C.lua_getmetatable(L, C.int(objindex)))
+func GetMetatable(L *LuaState, objindex int32) bool {
+	return int32(C.lua_getmetatable(L, C.int(objindex))) == 1
 }
 
 func Getfenv(L *LuaState, idx int32) {
