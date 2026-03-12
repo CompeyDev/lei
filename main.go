@@ -13,11 +13,34 @@ func main() {
 
 	table := state.CreateTable()
 	key, value := state.CreateString("hello"), state.CreateString("lei")
-	table.Set(key, value)
+	table.RawSet(key, value)
+	table.Push(state.CreateString("world"))
+
+	mt, indexMt := state.CreateTable(), state.CreateTable()
+	indexKey := state.CreateString("hej")
+	indexMt.Set(indexKey, value)
+	mt.RawSet(state.CreateString("__index"), indexMt)
+
+	table.SetMetatable(mt)
 
 	fmt.Printf("Used: %d, Limit: %d\n", mem.Used(), mem.Limit())
 
-	fmt.Println(key.ToString(), table.Get(key).(*lua.LuaString).ToString())
+	fmt.Println(key.ToString(), table.RawGet(key).(*lua.LuaString).ToString())
+	fmt.Println("key fetched by metatable:", table.Get(indexKey).(*lua.LuaString).ToString())
+	fmt.Println("key fetched without metatable:", table.RawGet(indexKey).(*lua.LuaNil))
+	fmt.Println("popped value:", table.Pop().(*lua.LuaString).ToString())
+
+	fmt.Println("len:", table.Len())
+
+	table.RawPush(state.CreateString("raw"))
+	fmt.Println("raw popped value:", table.RawPop().(*lua.LuaString).ToString())
+
+	fmt.Println("equals self:", table.Equals(table))
+	fmt.Println("equals other:", table.Equals(indexMt))
+
+	table.Clear()
+	fmt.Println("len after clear:", table.Len())
+
 	chunk := state.Load("main", []byte("print('hello, lei!!!!', math.random()); return {['mrrp'] = 'foo', ['meow'] = 'bar'}, 'baz'"))
 	values, returnErr := chunk.Call()
 
