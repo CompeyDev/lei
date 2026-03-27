@@ -369,7 +369,7 @@ func ToBuffer(L *LuaState, idx int32, len *uint64) unsafe.Pointer {
 }
 
 func ToPointer(L *LuaState, idx int32) unsafe.Pointer {
-	return unsafe.Pointer(C.lua_topointer(L, C.int(idx)))
+	return C.lua_topointer(L, C.int(idx))
 }
 
 //
