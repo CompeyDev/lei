@@ -1,6 +1,8 @@
 package lua
 
-import "github.com/CompeyDev/lei/ffi"
+import (
+	"github.com/CompeyDev/lei/ffi"
+)
 
 type LuaTable struct {
 	vm    *Lua
@@ -38,11 +40,9 @@ func (t *LuaTable) Get(key LuaValue) LuaValue {
 func (t *LuaTable) RawSet(key LuaValue, value LuaValue) {
 	state := t.vm.state()
 
-	t.deref(t.vm)     // table (-3)
-	key.deref(t.vm)   // key   (-2)
-	value.deref(t.vm) // value (-1)
-
-	// Pop the table off
+	t.deref(t.vm)
+	key.deref(t.vm)
+	value.deref(t.vm)
 	defer ffi.Pop(state, 1)
 
 	ffi.RawSet(state, -3)
@@ -51,26 +51,22 @@ func (t *LuaTable) RawSet(key LuaValue, value LuaValue) {
 func (t *LuaTable) RawGet(key LuaValue) LuaValue {
 	state := t.vm.state()
 
-	t.deref(t.vm)   // table (-2)
-	key.deref(t.vm) // key   (-1)
-
-	// Pop the table and value off
+	t.deref(t.vm)
+	key.deref(t.vm)
 	defer ffi.Pop(state, 2)
 
 	ffi.RawGet(state, -2)
-	val := intoLuaValue(t.vm, -1) // value (-1)
-
-	return val
+	return intoLuaValue(t.vm, -1)
 }
 
 func (t *LuaTable) Push(value LuaValue) {
 	state := t.vm.state()
 
-	t.deref(t.vm)     // table (-2)
-	value.deref(t.vm) // value (-1)
+	t.deref(t.vm)
+	value.deref(t.vm)
 
-	// Pop the table and key off
-	defer ffi.Pop(state, 2)
+	// Pop the table, key and value are consumed
+	defer ffi.Pop(state, 1)
 
 	// Insert new index and set it to the value
 	len := ffi.ObjLen(state, -2)
@@ -215,9 +211,9 @@ func (t *LuaTable) SetMetatable(metatable *LuaTable) {
 	// Set the metatable for the table
 	ffi.SetMetatable(state, -2)
 
-	// Pop metatable, re-ref the table
-	ffi.Pop(state, 1)
+	// Re-ref the table, then pop it
 	t.index = int(ffi.Ref(state, -1))
+	ffi.Pop(state, 1)
 }
 
 func (t *LuaTable) GetMetatable() *LuaTable {

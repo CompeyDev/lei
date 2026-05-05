@@ -77,6 +77,7 @@ func (l *Lua) CreateTable() *LuaTable {
 
 	ffi.NewTable(state)
 	index := ffi.Ref(state, -1)
+	ffi.Pop(state, 1)
 
 	t := &LuaTable{vm: l, index: int(index)}
 	runtime.SetFinalizer(t, valueUnrefer[*LuaTable](l))
@@ -88,7 +89,7 @@ func (l *Lua) CreateString(str string) *LuaString {
 	state := l.inner.luaState
 
 	ffi.PushString(state, str)
-	index := ffi.Ref(state, -1)
+	index := refAndPop(state)
 
 	s := &LuaString{vm: l, index: int(index)}
 	runtime.SetFinalizer(s, valueUnrefer[*LuaString](l))
@@ -104,7 +105,7 @@ func (l *Lua) CreateFunction(name *string, fn GoFunction) *LuaChunk {
 
 	ffi.PushCClosureK(state, registryTrampoline, name, 1, nil)
 
-	index := ffi.Ref(state, -1)
+	index := refAndPop(state)
 	c := &LuaChunk{vm: l, index: int(index), name: name, mode: ChunkModeFUNCTION}
 	runtime.SetFinalizer(c, func(c *LuaChunk) { ffi.Unref(state, index) })
 
@@ -147,7 +148,7 @@ func (l *Lua) CreateUserData(value IntoUserData) *LuaUserData {
 
 	ffi.SetMetatable(state, -2)
 
-	userdata.index = int(ffi.Ref(state, -1))
+	userdata.index = int(refAndPop(state))
 	runtime.SetFinalizer(userdata, valueUnrefer[*LuaUserData](l))
 
 	return userdata
@@ -157,7 +158,7 @@ func (l *Lua) CreateBuffer(size uint64) *LuaBuffer {
 	state := l.state()
 
 	ffi.NewBuffer(state, size)
-	index := ffi.Ref(state, -1)
+	index := refAndPop(state)
 
 	b := &LuaBuffer{vm: l, index: int(index), size: size}
 	runtime.SetFinalizer(b, valueUnrefer[*LuaBuffer](l))
@@ -172,7 +173,7 @@ func (l *Lua) CreateThread(chunk *LuaChunk) (*LuaThread, error) {
 	chunk.pushToStack()
 	ffi.XMove(mainState, threadState, 1)
 
-	index := ffi.Ref(mainState, -1)
+	index := refAndPop(mainState)
 	t := &LuaThread{vm: l, chunk: chunk, index: int(index)}
 
 	runtime.SetFinalizer(t, func(t *LuaThread) {
@@ -212,6 +213,7 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 	}
 
 	ffi.OpenBase(state.luaState)
+	ffi.Pop(state.luaState, 1)
 	luaLibs := map[StdLib]func(*ffi.LuaState){
 		StdLibCOROUTINE: ffi.OpenCoroutine,
 		StdLibTABLE:     ffi.OpenTable,
@@ -228,6 +230,7 @@ func NewWith(libs StdLib, options LuaOptions) *Lua {
 	for library, opener := range luaLibs {
 		if (!options.IsSafe || StdLibALLSAFE.Contains(library)) && libs.Contains(library) {
 			opener(state.luaState)
+			ffi.Pop(state.luaState, 1)
 		}
 	}
 
@@ -273,4 +276,11 @@ func pushUpvalue[T any](state *ffi.LuaState, ptr *T, dtor unsafe.Pointer) *uintp
 	*up = uintptr(cgo.NewHandle(ptr))
 
 	return up
+}
+
+func refAndPop(state *ffi.LuaState) int32 {
+	index := ffi.Ref(state, -1)
+	ffi.Pop(state, 1)
+
+	return index
 }
