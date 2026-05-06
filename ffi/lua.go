@@ -328,12 +328,12 @@ func ObjLen(L *LuaState, idx int32) uint64 {
 }
 
 func ToCFunction(L *LuaState, idx int32) LuaCFunction {
-	p := unsafe.Pointer(C.lua_tocfunction(L, C.int(idx)))
-	if p == C.NULL {
+	p := C.lua_tocfunction(L, C.int(idx))
+	if p == nil {
 		return nil
 	}
 
-	return *(*LuaCFunction)(p)
+	return *(*LuaCFunction)(unsafe.Pointer(&p))
 }
 
 func ToLightUserdata(L *LuaState, idx int32) unsafe.Pointer {
@@ -398,8 +398,7 @@ func PushLString(L *LuaState, s string, l uint64) {
 	cs := C.CString(s)
 	defer C.free(unsafe.Pointer(cs))
 
-	// NOTE: CStrings are null-terminated, and hence one longer than Go strings
-	C.lua_pushlstring(L, cs, C.size_t(l+1))
+	C.lua_pushlstring(L, cs, C.size_t(l))
 }
 
 func PushString(L *LuaState, s string) {
@@ -552,7 +551,7 @@ func SetMetatable(L *LuaState, objindex int32) int32 {
 }
 
 func Setfenv(L *LuaState, idx int32) bool {
-	return C.lua_setfenv(L, C.int(idx)) == 0
+	return C.lua_setfenv(L, C.int(idx)) != 0
 }
 
 //
@@ -701,11 +700,12 @@ func SetUserdataDtor(L *LuaState, tag int32, dtor unsafe.Pointer) {
 }
 
 func GetUserdataDtor(L *LuaState, tag int32) LuaDestructor {
-	return *(*LuaDestructor)(unsafe.Pointer(C.lua_getuserdatadtor(L, C.int(tag))))
+	p := C.lua_getuserdatadtor(L, C.int(tag))
+	return *(*LuaDestructor)(unsafe.Pointer(&p))
 }
 
-func SetUserdataMetatable(L *LuaState, tag int32, idx int32) {
-	C.lua_setuserdatametatable(L, C.int(idx))
+func SetUserdataMetatable(L *LuaState, tag int32) {
+	C.lua_setuserdatametatable(L, C.int(tag))
 }
 
 func GetUserdataMetatable(L *LuaState, tag int32) {
@@ -773,8 +773,8 @@ type LuaDebug struct {
 	What        string
 	Source      string
 	ShortSrc    string
-	LineDefined int8
-	CurrentLine int8
+	LineDefined int32
+	CurrentLine int32
 	NUpVals     uint8
 	NParams     uint8
 	IsVarArg    int8
@@ -882,7 +882,6 @@ func Breakpoint(L *LuaState, funcindex int32, line int32, enabled bool) int32 {
 
 func GetCoverage(L *LuaState, funcindex int32, context unsafe.Pointer, callback LuaCoverage) {
 	ccallback := C.malloc(C.size_t(unsafe.Sizeof(callback)))
-	defer C.free(ccallback)
 	*(*LuaCoverage)(ccallback) = callback
 
 	C.clua_getcoverage(L, C.int(funcindex), context, ccallback)
@@ -910,15 +909,15 @@ func Callbacks(L *LuaState) *LuaCallbacks {
 
 	return &LuaCallbacks{
 		Userdata:            ccallbacks.userdata,
-		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(ccallbacks.interrupt)),
-		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(ccallbacks.panic)),
-		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(ccallbacks.userthread)),
-		UserAtom:            *(*func(s string, l uint64) int16)(unsafe.Pointer(ccallbacks.useratom)),
-		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugbreak)),
-		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
-		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debuginterrupt)),
-		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(ccallbacks.debugprotectederror)),
-		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(ccallbacks.onallocate)),
+		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(&ccallbacks.interrupt)),
+		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(&ccallbacks.panic)),
+		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(&ccallbacks.userthread)),
+		UserAtom:            *(*func(s string, l uint64) int16)(unsafe.Pointer(&ccallbacks.useratom)),
+		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debugbreak)),
+		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debugstep)),
+		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debuginterrupt)),
+		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(&ccallbacks.debugprotectederror)),
+		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(&ccallbacks.onallocate)),
 	}
 }
 
@@ -991,7 +990,7 @@ func PushLiteral(L *LuaState, s string) {
 }
 
 func PushCFunction(L *LuaState, f unsafe.Pointer) {
-	PushCClosureK(L, f, new(string), 0, nil)
+	PushCClosureK(L, f, nil, 0, nil)
 }
 
 func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname *string) {
@@ -999,7 +998,7 @@ func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname *string) {
 }
 
 func PushCClosure(L *LuaState, f unsafe.Pointer, nup int32) {
-	PushCClosureK(L, f, new(string), nup, nil)
+	PushCClosureK(L, f, nil, nup, nil)
 }
 
 func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname *string, nup int32) {

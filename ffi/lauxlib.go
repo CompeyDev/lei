@@ -179,7 +179,8 @@ func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {
 	clst := C.make_char_array(C.int(len(lst)))
 	defer C.free_char_array(clst, C.int(len(lst)))
 	for i, s := range lst {
-		C.set_array_string(clst, C.CString(s), C.int(i))
+		cs := C.CString(s)
+		C.set_array_string(clst, cs, C.int(i))
 	}
 
 	return int32(C.luaL_checkoption(L, C.int(narg), cdef, clst))
@@ -187,7 +188,6 @@ func LCheckOption(L *LuaState, narg int32, def string, lst []string) int32 {
 
 func LToLString(L *LuaState, idx int32, len *uint64) string {
 	p := C.luaL_tolstring(L, C.int(idx), (*C.size_t)(len))
-	defer C.free(unsafe.Pointer(p))
 
 	Pop(L, 1)
 	return C.GoString(p)
