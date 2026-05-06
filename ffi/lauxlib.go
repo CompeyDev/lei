@@ -166,9 +166,6 @@ func LWhere(L *LuaState, lvl int32) {
 // pass to luaL_errorL. This is an inconsistency with the actual C API, but
 // there isn't really anything we can do.
 func LErrorL(L *LuaState, msg string) {
-	cmsg := C.CString(msg)
-	defer C.free(unsafe.Pointer(cmsg))
-
 	PushString(L, msg)
 	Error(L)
 
@@ -192,6 +189,7 @@ func LToLString(L *LuaState, idx int32, len *uint64) string {
 	p := C.luaL_tolstring(L, C.int(idx), (*C.size_t)(len))
 	defer C.free(unsafe.Pointer(p))
 
+	Pop(L, 1)
 	return C.GoString(p)
 }
 
