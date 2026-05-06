@@ -73,6 +73,7 @@ func (t *LuaThread) collectResults(threadState *ffi.LuaState, status int) ([]Lua
 		results[i] = intoLuaValue(t.vm, int32(ffi.GetTop(mainState)))
 	}
 
+	ffi.SetTop(threadState, 0)
 	return results, nil
 }
 

@@ -80,8 +80,8 @@ func (t *LuaTable) Pop() LuaValue {
 
 	t.deref(t.vm) // table (-1)
 
-	// Pop the table off
-	defer ffi.Pop(state, 1)
+	// Pop the table and value off
+	defer ffi.Pop(state, 2)
 
 	// Get the last value and nil it out
 	len := ffi.ObjLen(state, -1)
@@ -118,7 +118,7 @@ func (t *LuaTable) RawPop() LuaValue {
 	t.deref(t.vm) // table (-1)
 
 	// Pop the table off
-	defer ffi.Pop(state, 1)
+	defer ffi.Pop(state, 2)
 
 	// Get the last value and nil it out
 	len := ffi.ObjLen(state, -1)

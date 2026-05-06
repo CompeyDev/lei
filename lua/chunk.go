@@ -75,6 +75,7 @@ func (c *LuaChunk) Call(args ...LuaValue) ([]LuaValue, error) {
 		results[i] = intoLuaValue(c.vm, stackIndex)
 	}
 
+	ffi.Pop(state, resultsCount)
 	return results, nil
 }
 
@@ -102,7 +103,9 @@ func (c *LuaChunk) pushToStack() error {
 		hasLoaded := ffi.LuauLoad(state, *c.name, bytecode, uint64(len(bytecode)), 0)
 		if !hasLoaded {
 			// Miscellaneous error is denoted with a -1 code
-			return &LuaError{Code: -1, Message: ffi.ToLString(state, -1, nil)}
+			message := ffi.ToLString(state, -1, nil)
+			ffi.Pop(state, 1)
+			return &LuaError{Code: -1, Message: message}
 		}
 
 		// Apply native code generation if requested

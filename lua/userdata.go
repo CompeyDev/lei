@@ -39,6 +39,8 @@ func (ud *LuaUserData) Downcast() IntoUserData {
 	}
 
 	ud.deref(ud.vm)
+	defer ffi.Pop(ud.vm.state(), 1)
+
 	ptr := ffi.ToUserdata(ud.vm.state(), -1)
 
 	if ptr != nil {
