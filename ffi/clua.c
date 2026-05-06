@@ -1,6 +1,5 @@
 #include <stdio.h>
-#include <lua.h>
-#include <_cgo_export.h>
+#include "luau/VM/include/lua.h" 
 
 // void* clua_alloc(void* ud, void *ptr, size_t osize, size_t nsize)
 // {

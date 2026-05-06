@@ -1,8 +1,10 @@
 package ffi
 
+//go:generate go run ../build buildProject Luau.VM
+
 /*
-#cgo CFLAGS: -Iluau/VM/include -I/usr/lib/gcc/x86_64-pc-linux-gnu/15.2.1/include
-#cgo LDFLAGS: -Lluau/cmake -lLuau.VM -lm -lstdc++
+#cgo CFLAGS: -Iluau/VM/include
+#cgo LDFLAGS: -L_obj -lLuau.VM -lm -lstdc++
 #include <lua.h>
 #include <lualib.h>
 #include <stdlib.h>
@@ -36,9 +38,9 @@ const LUA_MULTRET = -1
 //
 
 const (
-	LUA_REGISTRYINDEX = -LUAI_MAXCSTACK - 2000
-	LUA_ENVIRONINDEX  = -LUAI_MAXCSTACK - 2001
-	LUA_GLOBALSINDEX  = -LUAI_MAXCSTACK - 2002
+	LUA_REGISTRYINDEX = C.LUA_REGISTRYINDEX
+	LUA_ENVIRONINDEX  = C.LUA_ENVIRONINDEX
+	LUA_GLOBALSINDEX  = C.LUA_GLOBALSINDEX
 )
 
 //
@@ -48,7 +50,7 @@ const (
 //
 
 const (
-	LUA_OK = iota + 1
+	LUA_OK = iota
 	LUA_YIELD
 	LUA_ERRRUN
 	LUA_ERRSYNTAX
@@ -64,7 +66,7 @@ const (
 //
 
 const (
-	LUA_CORUN = iota + 1
+	LUA_CORUN = iota
 	LUA_COSUS
 	LUA_CONOR
 	LUA_COFIN
@@ -288,8 +290,21 @@ func ToUnsignedX(L *LuaState, idx int32, isnum *bool) LuaUnsigned {
 	return unsigned
 }
 
-func ToVector(L *LuaState, idx int32) {
-	C.lua_tovector(L, C.int(idx))
+// DIVERGENCE: We cannot cast and reinterpret the C owned vector returned as
+// a Go value, as it breaks cgo pointer rules. Instead, we allocate new Go
+// owned floats on the heap and only read the floats returned by C
+
+func ToVector(L *C.lua_State, idx int32) (x, y, z *float32) {
+	vec := C.lua_tovector(L, C.int(idx))
+	if vec == nil {
+		return nil, nil, nil
+	}
+
+	v := (*[3]C.float)(unsafe.Pointer(vec))
+	x, y, z = new(float32), new(float32), new(float32)
+	*x, *y, *z = float32(v[0]), float32(v[1]), float32(v[2])
+
+	return
 }
 
 func ToBoolean(L *LuaState, idx int32) bool {
@@ -313,12 +328,12 @@ func ObjLen(L *LuaState, idx int32) uint64 {
 }
 
 func ToCFunction(L *LuaState, idx int32) LuaCFunction {
-	p := unsafe.Pointer(C.lua_tocfunction(L, C.int(idx)))
-	if p == C.NULL {
+	p := C.lua_tocfunction(L, C.int(idx))
+	if p == nil {
 		return nil
 	}
 
-	return *(*LuaCFunction)(p)
+	return *(*LuaCFunction)(unsafe.Pointer(&p))
 }
 
 func ToLightUserdata(L *LuaState, idx int32) unsafe.Pointer {
@@ -354,7 +369,7 @@ func ToBuffer(L *LuaState, idx int32, len *uint64) unsafe.Pointer {
 }
 
 func ToPointer(L *LuaState, idx int32) unsafe.Pointer {
-	return unsafe.Pointer(C.lua_topointer(L, C.int(idx)))
+	return C.lua_topointer(L, C.int(idx))
 }
 
 //
@@ -383,8 +398,7 @@ func PushLString(L *LuaState, s string, l uint64) {
 	cs := C.CString(s)
 	defer C.free(unsafe.Pointer(cs))
 
-	// NOTE: CStrings are null-terminated, and hence one longer than Go strings
-	C.lua_pushlstring(L, cs, C.size_t(l+1))
+	C.lua_pushlstring(L, cs, C.size_t(l))
 }
 
 func PushString(L *LuaState, s string) {
@@ -398,9 +412,13 @@ func PushString(L *LuaState, s string) {
 // arguments from Go->C isn't something that is possible.
 // func PushFStringL(L *lua_State, fmt string) {}
 
-func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname string, nup int32, cont unsafe.Pointer) {
-	cdebugname := C.CString(debugname)
-	defer C.free(unsafe.Pointer(cdebugname))
+func PushCClosureK(L *LuaState, f unsafe.Pointer, debugname *string, nup int32, cont unsafe.Pointer) {
+	var cdebugname *C.char
+	if debugname != nil && *debugname != "" {
+		cdebugname = C.CString(*debugname)
+		defer C.free(unsafe.Pointer(cdebugname))
+	}
+
 	C.clua_pushcclosurek(L, f, cdebugname, C.int(nup), cont)
 }
 
@@ -419,6 +437,10 @@ func PushThread(L *LuaState) bool {
 
 func PushLightUserdataTagged(L *LuaState, p unsafe.Pointer, tag int32) {
 	C.lua_pushlightuserdatatagged(L, p, C.int(tag))
+}
+
+func PushVector(L *LuaState, x, y, z float32) {
+	C.lua_pushvector(L, C.float(x), C.float(y), C.float(z))
 }
 
 func NewUserdataTagged(L *LuaState, sz uint64, tag int32) unsafe.Pointer {
@@ -491,8 +513,8 @@ func SetSafeEnv(L *LuaState, idx int32, enabled bool) {
 	C.lua_setsafeenv(L, C.int(idx), cenabled)
 }
 
-func GetMetatable(L *LuaState, objindex int32) int32 {
-	return int32(C.lua_getmetatable(L, C.int(objindex)))
+func GetMetatable(L *LuaState, objindex int32) bool {
+	return int32(C.lua_getmetatable(L, C.int(objindex))) == 1
 }
 
 func Getfenv(L *LuaState, idx int32) {
@@ -528,8 +550,8 @@ func SetMetatable(L *LuaState, objindex int32) int32 {
 	return int32(C.lua_setmetatable(L, C.int(objindex)))
 }
 
-func Setfenv(L *LuaState, idx int32) int32 {
-	return int32(C.lua_setfenv(L, C.int(idx)))
+func Setfenv(L *LuaState, idx int32) bool {
+	return C.lua_setfenv(L, C.int(idx)) != 0
 }
 
 //
@@ -538,14 +560,21 @@ func Setfenv(L *LuaState, idx int32) int32 {
 // =========================
 //
 
-func LuauLoad(L *LuaState, chunkname string, data string, size uint64, env int32) int32 {
+func LuauLoad(L *LuaState, chunkname string, data []byte, size uint64, env int32) bool {
 	cchunkname := C.CString(chunkname)
 	defer C.free(unsafe.Pointer(cchunkname))
 
-	cdata := C.CString(data)
-	defer C.free(unsafe.Pointer(cdata))
+	var cdata *C.char
+	if size == 0 {
+		// NULL for empty slices
+		cdata = (*C.char)(C.NULL)
+	} else {
+		cdata = (*C.char)(unsafe.Pointer(&data[0]))
+	}
 
-	return int32(C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)))
+	// NOTE: We don't free the bytecode after it's loaded
+
+	return C.luau_load(L, cchunkname, cdata, C.size_t(size), C.int(env)) == 0
 }
 
 func Call(L *LuaState, nargs int32, nresults int32) {
@@ -562,23 +591,23 @@ func Pcall(L *LuaState, nargs int32, nresults int32, errfunc int32) int32 {
 // ========================
 //
 
-func LuaYield(L *LuaState, nresults int32) int32 {
+func Yield(L *LuaState, nresults int32) int32 {
 	return int32(C.lua_yield(L, C.int(nresults)))
 }
 
-func LuaBreak(L *LuaState) int32 {
+func Break(L *LuaState) int32 {
 	return int32(C.lua_break(L))
 }
 
-func LuaResume(L *LuaState, from *LuaState, nargs int32) int32 {
+func Resume(L *LuaState, from *LuaState, nargs int32) int32 {
 	return int32(C.lua_resume(L, from, C.int(nargs)))
 }
 
-func LuaResumeError(L *LuaState, from *LuaState) int32 {
+func ResumeError(L *LuaState, from *LuaState) int32 {
 	return int32(C.lua_resumeerror(L, from))
 }
 
-func LuaStatus(L *LuaState) int32 {
+func Status(L *LuaState) int32 {
 	return int32(C.lua_status(L))
 }
 
@@ -671,11 +700,12 @@ func SetUserdataDtor(L *LuaState, tag int32, dtor unsafe.Pointer) {
 }
 
 func GetUserdataDtor(L *LuaState, tag int32) LuaDestructor {
-	return *(*LuaDestructor)(unsafe.Pointer(C.lua_getuserdatadtor(L, C.int(tag))))
+	p := C.lua_getuserdatadtor(L, C.int(tag))
+	return *(*LuaDestructor)(unsafe.Pointer(&p))
 }
 
-func SetUserdataMetatable(L *LuaState, tag int32, idx int32) {
-	C.lua_setuserdatametatable(L, C.int(idx))
+func SetUserdataMetatable(L *LuaState, tag int32) {
+	C.lua_setuserdatametatable(L, C.int(tag))
 }
 
 func GetUserdataMetatable(L *LuaState, tag int32) {
@@ -726,6 +756,10 @@ func Unref(L *LuaState, ref int32) {
 	C.lua_unref(L, C.int(ref))
 }
 
+func GetRef(L *LuaState, ref int32) int32 {
+	return RawGetI(L, LUA_REGISTRYINDEX, ref)
+}
+
 //
 // ==================
 //     Debug API
@@ -739,8 +773,8 @@ type LuaDebug struct {
 	What        string
 	Source      string
 	ShortSrc    string
-	LineDefined int8
-	CurrentLine int8
+	LineDefined int32
+	CurrentLine int32
 	NUpVals     uint8
 	NParams     uint8
 	IsVarArg    int8
@@ -848,7 +882,6 @@ func Breakpoint(L *LuaState, funcindex int32, line int32, enabled bool) int32 {
 
 func GetCoverage(L *LuaState, funcindex int32, context unsafe.Pointer, callback LuaCoverage) {
 	ccallback := C.malloc(C.size_t(unsafe.Sizeof(callback)))
-	defer C.free(ccallback)
 	*(*LuaCoverage)(ccallback) = callback
 
 	C.clua_getcoverage(L, C.int(funcindex), context, ccallback)
@@ -876,15 +909,15 @@ func Callbacks(L *LuaState) *LuaCallbacks {
 
 	return &LuaCallbacks{
 		Userdata:            ccallbacks.userdata,
-		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(ccallbacks.interrupt)),
-		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(ccallbacks.panic)),
-		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(ccallbacks.userthread)),
-		UserAtom:            *(*func(s string, l uint64) int16)(unsafe.Pointer(ccallbacks.useratom)),
-		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugbreak)),
-		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debugstep)),
-		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(ccallbacks.debuginterrupt)),
-		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(ccallbacks.debugprotectederror)),
-		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(ccallbacks.onallocate)),
+		Interrupt:           *(*func(L *LuaState, gc int32))(unsafe.Pointer(&ccallbacks.interrupt)),
+		Panic:               *(*func(L *LuaState, errcode int32))(unsafe.Pointer(&ccallbacks.panic)),
+		UserThread:          *(*func(LP *LuaState, L *LuaState))(unsafe.Pointer(&ccallbacks.userthread)),
+		UserAtom:            *(*func(s string, l uint64) int16)(unsafe.Pointer(&ccallbacks.useratom)),
+		DebugBreak:          *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debugbreak)),
+		DebugStep:           *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debugstep)),
+		DebugInterrupt:      *(*func(L *LuaState, ar *LuaDebug))(unsafe.Pointer(&ccallbacks.debuginterrupt)),
+		DebugProtectedError: *(*func(L *LuaState))(unsafe.Pointer(&ccallbacks.debugprotectederror)),
+		OnAllocate:          *(*func(L *LuaState, osize uint64, nsize uint64))(unsafe.Pointer(&ccallbacks.onallocate)),
 	}
 }
 
@@ -957,18 +990,18 @@ func PushLiteral(L *LuaState, s string) {
 }
 
 func PushCFunction(L *LuaState, f unsafe.Pointer) {
-	PushCClosureK(L, f, *new(string), 0, nil)
+	PushCClosureK(L, f, nil, 0, nil)
 }
 
-func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname string) {
+func PushCFunctionD(L *LuaState, f unsafe.Pointer, debugname *string) {
 	PushCClosureK(L, f, debugname, 0, nil)
 }
 
 func PushCClosure(L *LuaState, f unsafe.Pointer, nup int32) {
-	PushCClosureK(L, f, *new(string), nup, nil)
+	PushCClosureK(L, f, nil, nup, nil)
 }
 
-func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname string, nup int32) {
+func PushCClosureD(L *LuaState, f unsafe.Pointer, debugname *string, nup int32) {
 	PushCClosureK(L, f, debugname, nup, nil)
 }
 
